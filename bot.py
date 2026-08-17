@@ -1,22 +1,24 @@
 """
-Sun'iy Intellekt Telegram Bot (Suzma AI uslubida, tugmali menyu va coin tizimi bilan)
+MUBORAKXON — Sun'iy Intellekt Telegram Bot (tugmali menyu va coin tizimi bilan)
 - Matnli suhbat: Claude (Anthropic) API orqali
-- Rasm yaratish: OpenAI (DALL-E) API orqali
+- Rasm yaratish: Higgsfield API orqali
 - Video yaratish: fal.ai orqali (Wan 2.6 yoki Kling 1.6)
 - Matnni ovozga aylantirish: OpenAI TTS orqali
 - Coin tizimi: har bir amal uchun coin yechiladi, admin qo'lda coin qo'shishi mumkin
 
 O'rnatish:
-    pip install python-telegram-bot anthropic openai fal-client --upgrade
+    pip install -r requirements.txt
 
 Ishga tushirish:
     python bot.py
 
-Muhit o'zgaruvchilari orqali kalitlarni bering:
+Muhit o'zgaruvchilari orqali kalitlarni bering (Railway → Variables):
     TELEGRAM_BOT_TOKEN
     ANTHROPIC_API_KEY
-    OPENAI_API_KEY
-    FAL_KEY
+    OPENAI_API_KEY       (faqat ovozga aylantirish uchun)
+    FAL_KEY               (video uchun)
+    HF_API_KEY_ID          (Higgsfield — rasm uchun)
+    HF_API_KEY_SECRET      (Higgsfield — rasm uchun)
     ADMIN_ID
 """
 
@@ -24,8 +26,10 @@ import os
 import json
 import logging
 import asyncio
+
+import httpx
 import fal_client
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InputFile
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -36,23 +40,30 @@ from telegram.ext import (
 from anthropic import Anthropic
 from openai import OpenAI
 
+# === SOZLAMALAR ===
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "BU_YERGA_TELEGRAM_TOKENINGIZNI_YOZING")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "BU_YERGA_ANTHROPIC_API_KEYINGIZNI_YOZING")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "BU_YERGA_OPENAI_API_KEYINGIZNI_YOZING")
 FAL_KEY = os.environ.get("FAL_KEY", "BU_YERGA_FAL_API_KEYINGIZNI_YOZING")
+HF_API_KEY_ID = os.environ.get("HF_API_KEY_ID", "")
+HF_API_KEY_SECRET = os.environ.get("HF_API_KEY_SECRET", "")
 ADMIN_ID = os.environ.get("ADMIN_ID", "BU_YERGA_TELEGRAM_ID_INGIZNI_YOZING")
 
+BOT_NAME = "MUBORAKXON"
+WELCOME_IMAGE_PATH = "welcome.jpg"  # banner rasmini shu nom bilan loyihaga qo'ying
+
 MODEL_NAME = "claude-sonnet-4-6"
-IMAGE_MODEL_NAME = "dall-e-3"
 TTS_MODEL_NAME = "tts-1"
-TTS_VOICE = "alloy"  # boshqa variantlar: echo, fable, onyx, nova, shimmer
+TTS_VOICE = "alloy"
+
+HF_MODEL_ENDPOINT = "https://platform.higgsfield.ai/higgsfield-ai/soul/standard"
 
 VIDEO_MODELS = {
     "wan": {"label": "🟢 Wan 2.6 (arzon)", "model_id": "fal-ai/wan-t2v"},
     "kling": {"label": "🔵 Kling 1.6 (sifatli)", "model_id": "fal-ai/kling-video/v1.6/standard/text-to-video"},
 }
 
-MUSIC_MODEL_ID = "fal-ai/minimax-music"  # fal.ai saytida aniq nomi tekshirilishi kerak
+MUSIC_MODEL_ID = "fal-ai/minimax-music"
 
 COIN_START_BALANCE = 50
 COIN_COST_TEXT = 1
@@ -63,7 +74,7 @@ COIN_COST_MUSIC = 15
 COINS_FILE = "coins.json"
 
 SYSTEM_PROMPT = (
-    "Sen foydali, samimiy va bilimdon sun'iy intellekt yordamchisisan. "
+    "Sen foydali, samimiy va bilimdon sun'iy intellekt yordamchisisan, isming Muborakxon. "
     "Foydalanuvchi bilan o'zbek tilida (agar u boshqa tilda yozmasa) muloqot qilasan. "
     "Javoblaring aniq, tushunarli va foydali bo'lsin."
 )
@@ -95,6 +106,8 @@ awaiting_video_prompt: dict[int, str] = {}
 awaiting_voice_text: dict[int, bool] = {}
 awaiting_music_prompt: dict[int, bool] = {}
 
+
+# === COIN TIZIMI ===
 
 def load_coins() -> dict:
     if os.path.exists(COINS_FILE):
@@ -136,6 +149,8 @@ def is_admin(user_id: int) -> bool:
     return str(user_id) == str(ADMIN_ID)
 
 
+# === MENYULAR ===
+
 def main_menu_keyboard():
     return ReplyKeyboardMarkup(
         [
@@ -155,6 +170,41 @@ def video_model_keyboard():
     )
 
 
+# === HIGGSFIELD RASM GENERATSIYASI ===
+
+async def generate_higgsfield_image(prompt: str) -> str | None:
+    """Higgsfield API orqali rasm generatsiya qiladi, tayyor rasm URL'ini qaytaradi."""
+    headers = {
+        "Authorization": f"Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET}",
+        "Content-Type": "application/json",
+    }
+    payload = {"prompt": prompt, "aspect_ratio": "1:1", "resolution": "720p"}
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        submit_resp = await client.post(HF_MODEL_ENDPOINT, headers=headers, json=payload)
+        submit_resp.raise_for_status()
+        data = submit_resp.json()
+        status_url = data["status_url"]
+
+        for _ in range(24):
+            await asyncio.sleep(5)
+            status_resp = await client.get(status_url, headers=headers)
+            status_resp.raise_for_status()
+            status_data = status_resp.json()
+            status = status_data.get("status")
+
+            if status == "completed":
+                results = status_data.get("images") or status_data.get("results") or []
+                if results:
+                    return results[0].get("url")
+                return None
+            if status in ("failed", "nsfw", "cancelled"):
+                return None
+    return None
+
+
+# === HANDLERLAR ===
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     conversation_history[chat_id] = []
@@ -163,17 +213,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     awaiting_video_prompt.pop(chat_id, None)
     awaiting_voice_text[chat_id] = False
     balance = get_balance(chat_id)
-    await update.message.reply_text(
-        "Salom! 👋 Men sun'iy intellekt asosida ishlaydigan botman.\n\n"
+
+    caption = (
+        f"Salom! 👋 Men *{BOT_NAME}* — sun'iy intellekt asosida ishlaydigan botman.\n\n"
         f"🪙 Sizga {COIN_START_BALANCE} ta bepul coin berildi! Joriy balans: {balance}\n\n"
         "💬 Yozing — javob beraman (1 coin)\n"
         "🎨 Rasm yaratish (10 coin)\n"
         "🎬 Video yaratish (30 coin)\n"
         "🔊 Matnni ovozga aylantirish (3 coin)\n"
         "🎵 Qo'shiq yaratish (15 coin)\n\n"
-        "Quyidagi menyudan foydalaning:",
-        reply_markup=main_menu_keyboard(),
+        "Quyidagi menyudan foydalaning:"
     )
+
+    if os.path.exists(WELCOME_IMAGE_PATH):
+        with open(WELCOME_IMAGE_PATH, "rb") as photo:
+            await update.message.reply_photo(
+                photo=photo,
+                caption=caption,
+                parse_mode="Markdown",
+                reply_markup=main_menu_keyboard(),
+            )
+    else:
+        await update.message.reply_text(caption, parse_mode="Markdown", reply_markup=main_menu_keyboard())
 
 
 async def show_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -232,7 +293,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        f"⚙️ *Sozlamalar*\n\nMatn modeli: `{MODEL_NAME}`\nRasm modeli: `{IMAGE_MODEL_NAME}`\n"
+        f"⚙️ *Sozlamalar*\n\nBot: `{BOT_NAME}`\nMatn modeli: `{MODEL_NAME}`\nRasm: `Higgsfield`\n"
         f"Video modellari: Wan 2.6, Kling 1.6\nOvoz modeli: `{TTS_MODEL_NAME}`\n",
         parse_mode="Markdown",
         reply_markup=main_menu_keyboard(),
@@ -307,11 +368,7 @@ async def generate_voice_from_text(update: Update, context: ContextTypes.DEFAULT
 
     try:
         def run_tts():
-            return openai_client.audio.speech.create(
-                model=TTS_MODEL_NAME,
-                voice=TTS_VOICE,
-                input=text,
-            )
+            return openai_client.audio.speech.create(model=TTS_MODEL_NAME, voice=TTS_VOICE, input=text)
 
         response = await asyncio.to_thread(run_tts)
         audio_path = f"/tmp/voice_{chat_id}.mp3"
@@ -424,15 +481,28 @@ async def generate_video_from_prompt(update: Update, context: ContextTypes.DEFAU
 
 
 async def generate_image_from_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str):
+    """Higgsfield orqali rasm yaratadi (avvalgi versiyada DALL-E ishlatilgan edi)."""
     chat_id = update.effective_chat.id
     if get_balance(chat_id) < COIN_COST_IMAGE:
         await update.message.reply_text(f"❌ Coin yetarli emas. Rasm uchun {COIN_COST_IMAGE} coin kerak.", reply_markup=main_menu_keyboard())
         return
+
+    if not HF_API_KEY_ID or not HF_API_KEY_SECRET:
+        await update.message.reply_text(
+            "⚠️ Higgsfield API kaliti sozlanmagan. Railway Variables bo'limiga "
+            "HF_API_KEY_ID va HF_API_KEY_SECRET qo'shing.",
+            reply_markup=main_menu_keyboard(),
+        )
+        return
+
     await context.bot.send_chat_action(chat_id=chat_id, action="upload_photo")
     await update.message.reply_text("🎨 Rasm yaratilmoqda, biroz kuting...")
+
     try:
-        result = openai_client.images.generate(model=IMAGE_MODEL_NAME, prompt=prompt, size="1024x1024", quality="standard", n=1)
-        image_url = result.data[0].url
+        image_url = await generate_higgsfield_image(prompt)
+        if not image_url:
+            raise ValueError("Higgsfield rasm URL qaytarmadi")
+
         new_balance = change_balance(chat_id, -COIN_COST_IMAGE)
         await update.message.reply_photo(
             photo=image_url,
@@ -440,7 +510,7 @@ async def generate_image_from_prompt(update: Update, context: ContextTypes.DEFAU
             reply_markup=main_menu_keyboard(),
         )
     except Exception as e:
-        logger.error(f"OpenAI rasm yaratish xatosi: {e}")
+        logger.error(f"Higgsfield rasm yaratish xatosi: {e}")
         await update.message.reply_text(
             "Kechirasiz, rasm yaratishda xatolik yuz berdi. Coin yechilmadi. Birozdan so'ng qayta urinib ko'ring.",
             reply_markup=main_menu_keyboard(),
@@ -543,15 +613,17 @@ def main():
     if "BU_YERGA" in ANTHROPIC_API_KEY:
         missing.append("ANTHROPIC_API_KEY")
     if "BU_YERGA" in OPENAI_API_KEY:
-        missing.append("OPENAI_API_KEY")
+        missing.append("OPENAI_API_KEY (ovoz uchun)")
     if "BU_YERGA" in FAL_KEY:
-        missing.append("FAL_KEY")
+        missing.append("FAL_KEY (video uchun)")
+    if not HF_API_KEY_ID or not HF_API_KEY_SECRET:
+        missing.append("HF_API_KEY_ID / HF_API_KEY_SECRET (rasm uchun)")
     if "BU_YERGA" in ADMIN_ID:
         missing.append("ADMIN_ID")
 
     if missing:
         print(f"\n⚠️  DIQQAT: Quyidagi kalitlar sozlanmagan: {', '.join(missing)}\n")
-        return
+        print("Bot baribir ishga tushadi, lekin sozlanmagan funksiyalar ishlamaydi.\n")
 
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -562,7 +634,7 @@ def main():
     app.add_handler(CommandHandler("coin_qoshish", add_coins_admin))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("🤖 Bot ishga tushdi...")
+    print(f"🤖 {BOT_NAME} ishga tushdi...")
     app.run_polling()
 
 
