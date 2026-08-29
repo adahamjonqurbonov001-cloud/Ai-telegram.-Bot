@@ -57,6 +57,11 @@ FAL_KEY = os.environ.get("FAL_KEY", "BU_YERGA_FAL_API_KEYINGIZNI_YOZING")
 HF_API_KEY_ID = os.environ.get("HF_API_KEY_ID", "")
 HF_API_KEY_SECRET = os.environ.get("HF_API_KEY_SECRET", "")
 ADMIN_ID = os.environ.get("ADMIN_ID", "BU_YERGA_TELEGRAM_ID_INGIZNI_YOZING")
+PAYMENT_CARD_NUMBER = os.environ.get("PAYMENT_CARD_NUMBER", "8600 XXXX XXXX XXXX")
+PAYMENT_CARD_OWNER = os.environ.get("PAYMENT_CARD_OWNER", "F.I.SH.")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "@sizning_username")
+COIN_PRICE_SOM = int(os.environ.get("COIN_PRICE_SOM", "400"))  # 1 coin narxi (so'mda)
+COIN_PRICE_RUB = float(os.environ.get("COIN_PRICE_RUB", "3"))  # 1 coin narxi (rublda)
 
 BOT_NAME = "MUBORAKXON"
 WELCOME_IMAGE_PATH = "welcome.jpg"  # banner rasmini shu nom bilan loyihaga qo'ying
@@ -78,10 +83,10 @@ COIN_START_BALANCE = 50
 COIN_COST_TEXT = 1
 COIN_COST_IMAGE = 10
 COIN_COST_STYLE = 10
-COIN_COST_VIDEO = 30
+COIN_COST_VIDEO = 50
 COIN_COST_VOICE = 3
 COIN_COST_MUSIC = 15
-DAILY_BONUS_AMOUNT = 20
+DAILY_BONUS_AMOUNT = 10
 COINS_FILE = "coins.json"
 
 SYSTEM_PROMPT = (
@@ -280,8 +285,8 @@ def main_menu_keyboard(lang: str = DEFAULT_LANGUAGE):
             [KeyboardButton(t(lang, "btn_image")), KeyboardButton(t(lang, "btn_video"))],
             [KeyboardButton(t(lang, "btn_voice")), KeyboardButton(t(lang, "btn_music"))],
             [KeyboardButton(t(lang, "btn_balance")), KeyboardButton(t(lang, "btn_bonus"))],
-            [KeyboardButton(t(lang, "btn_settings")), KeyboardButton(t(lang, "btn_help"))],
-            [KeyboardButton(t(lang, "btn_language"))],
+            [KeyboardButton(t(lang, "btn_buy_coins")), KeyboardButton(t(lang, "btn_settings"))],
+            [KeyboardButton(t(lang, "btn_help")), KeyboardButton(t(lang, "btn_language"))],
         ],
         resize_keyboard=True,
     )
@@ -452,6 +457,26 @@ async def show_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💬 1  🎨 {COIN_COST_IMAGE}  🎬 {COIN_COST_VIDEO}  🔊 {COIN_COST_VOICE}  🎵 {COIN_COST_MUSIC}",
         parse_mode="Markdown",
         reply_markup=main_menu_keyboard(get_lang(chat_id)),
+    )
+
+
+async def show_buy_coins(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    lang = get_lang(chat_id)
+    price_100_som = COIN_PRICE_SOM * 100
+    await update.message.reply_text(
+        t(
+            lang, "buy_coins_info",
+            price_som=COIN_PRICE_SOM,
+            price_rub=COIN_PRICE_RUB,
+            price_100_som=f"{price_100_som:,}".replace(",", " "),
+            card_number=PAYMENT_CARD_NUMBER,
+            card_owner=PAYMENT_CARD_OWNER,
+            admin_username=ADMIN_USERNAME,
+            user_id=chat_id,
+        ),
+        parse_mode="Markdown",
+        reply_markup=main_menu_keyboard(lang),
     )
 
 
@@ -832,6 +857,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if user_text == t(lang, "btn_bonus"):
         await claim_daily_bonus(update, context)
+        return
+    if user_text == t(lang, "btn_buy_coins"):
+        await show_buy_coins(update, context)
         return
     if user_text == t(lang, "btn_settings"):
         await settings_command(update, context)
