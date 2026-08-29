@@ -368,6 +368,96 @@ TEXTS = {
         "uz": "🔵 Kling 1.6 (sifatli)", "ru": "🔵 Kling 1.6 (качество)", "kk": "🔵 Kling 1.6 (сапалы)",
         "tg": "🔵 Kling 1.6 (босифат)", "ky": "🔵 Kling 1.6 (сапаттуу)", "en": "🔵 Kling 1.6 (high quality)",
     },
+    "btn_buy_coins": {
+        "uz": "💳 Coin sotib olish", "ru": "💳 Купить монеты", "kk": "💳 Тиын сатып алу",
+        "tg": "💳 Харидани танга", "ky": "💳 Монета сатып алуу", "en": "💳 Buy coins",
+    },
+    "buy_coins_info": {
+        "uz": "💳 *Coin sotib olish*\n\n"
+              "1 coin narxi: *{price_som} so'm* / *{price_rub} rub*\n\n"
+              "📌 *Qanday sotib olish:*\n"
+              "1. Necha coin kerakligini hisoblang (masalan 100 coin = {price_100_som} so'm)\n"
+              "2. Quyidagi kartaga shu summani o'tkazing:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. To'lov chekini (screenshot) quyidagi admin'ga yuboring:\n"
+              "{admin_username}\n\n"
+              "4. Xabaringizda albatta yozing:\n"
+              "— Sizning Telegram ID'ingiz (pastda ko'rsatilgan)\n"
+              "— Nechta coin sotib olmoqchisiz\n\n"
+              "🆔 Sizning ID'ingiz: `{user_id}`\n\n"
+              "To'lov tasdiqlangach, coin balansingizga qo'shiladi.",
+        "ru": "💳 *Покупка монет*\n\n"
+              "Цена 1 монеты: *{price_som} сум* / *{price_rub} руб*\n\n"
+              "📌 *Как купить:*\n"
+              "1. Посчитайте нужное количество монет (например 100 монет = {price_100_som} сум)\n"
+              "2. Переведите сумму на карту:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. Отправьте скриншот чека администратору:\n"
+              "{admin_username}\n\n"
+              "4. Обязательно укажите в сообщении:\n"
+              "— Ваш Telegram ID (указан ниже)\n"
+              "— Сколько монет хотите купить\n\n"
+              "🆔 Ваш ID: `{user_id}`\n\n"
+              "После подтверждения оплаты монеты будут добавлены на баланс.",
+        "kk": "💳 *Тиын сатып алу*\n\n"
+              "1 тиын бағасы: *{price_som} сум* / *{price_rub} рубль*\n\n"
+              "📌 *Қалай сатып алу керек:*\n"
+              "1. Қанша тиын керегін есептеңіз (мысалы 100 тиын = {price_100_som} сум)\n"
+              "2. Осы соманы картаға аударыңыз:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. Төлем чегін (скриншот) админге жіберіңіз:\n"
+              "{admin_username}\n\n"
+              "4. Хабарламада міндетті түрде жазыңыз:\n"
+              "— Telegram ID'іңіз (төменде көрсетілген)\n"
+              "— Қанша тиын сатып алмоқчысыз\n\n"
+              "🆔 Сіздің ID'іңіз: `{user_id}`\n\n"
+              "Төлем расталғаннан кейін тиын балансқа қосылады.",
+        "tg": "💳 *Харидани танга*\n\n"
+              "Нархи 1 танга: *{price_som} сум* / *{price_rub} рубл*\n\n"
+              "📌 *Чӣ хел харидан:*\n"
+              "1. Миқдори танга лозимаро ҳисоб кунед (масалан 100 танга = {price_100_som} сум)\n"
+              "2. Ин маблағро ба корт гузаронед:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. Чеки пардохтро (скриншот) ба админ фиристед:\n"
+              "{admin_username}\n\n"
+              "4. Дар паём ҳатман нависед:\n"
+              "— Telegram ID-и шумо (дар поён нишон дода шудааст)\n"
+              "— Чанд танга харидан мехоҳед\n\n"
+              "🆔 ID-и шумо: `{user_id}`\n\n"
+              "Пас аз тасдиқи пардохт, танга ба баланс илова мешавад.",
+        "ky": "💳 *Монета сатып алуу*\n\n"
+              "1 монета баасы: *{price_som} сом* / *{price_rub} рубль*\n\n"
+              "📌 *Кантип сатып алуу керек:*\n"
+              "1. Канча монета керегин эсептеңиз (мисалы 100 монета = {price_100_som} сом)\n"
+              "2. Ушул суманы картага которуңуз:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. Төлөм чегин (скриншот) админге жөнөтүңүз:\n"
+              "{admin_username}\n\n"
+              "4. Билдирүүдө милдеттүү түрдө жазыңыз:\n"
+              "— Telegram ID'иңиз (төмөндө көрсөтүлгөн)\n"
+              "— Канча монета сатып алгыңыз келет\n\n"
+              "🆔 Сиздин ID'иңиз: `{user_id}`\n\n"
+              "Төлөм ырасталгандан кийин монета балансга кошулат.",
+        "en": "💳 *Buy Coins*\n\n"
+              "Price per coin: *{price_som} som* / *{price_rub} rub*\n\n"
+              "📌 *How to buy:*\n"
+              "1. Calculate how many coins you need (e.g. 100 coins = {price_100_som} som)\n"
+              "2. Transfer that amount to the card:\n\n"
+              "💳 `{card_number}`\n"
+              "👤 {card_owner}\n\n"
+              "3. Send the payment receipt (screenshot) to the admin:\n"
+              "{admin_username}\n\n"
+              "4. In your message, be sure to include:\n"
+              "— Your Telegram ID (shown below)\n"
+              "— How many coins you want to buy\n\n"
+              "🆔 Your ID: `{user_id}`\n\n"
+              "Once payment is confirmed, coins will be added to your balance.",
+    },
 }
 
 
