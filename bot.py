@@ -585,7 +585,10 @@ async def process_style_photo(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     photo = update.message.photo[-1]
     tg_file = await context.bot.get_file(photo.file_id)
-    image_url = tg_file.file_path  # Telegram bergan to'g'ridan-to'g'ri HTTPS manzil
+    # ⚠️ TUZATILDI: tg_file.file_path odatda nisbiy yo'l bo'ladi (masalan "photos/file_1.jpg"),
+    # to'liq HTTPS manzil emas. Higgsfield uni ochib bo'lmasligi mumkin edi, shuning uchun
+    # to'liq Telegram fayl havolasini o'zimiz quramiz.
+    image_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{tg_file.file_path}"
 
     await context.bot.send_chat_action(chat_id=chat_id, action="upload_photo")
     await update.message.reply_text(t(lang, "style_applying"))
