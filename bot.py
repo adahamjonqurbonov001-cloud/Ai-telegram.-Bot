@@ -17,7 +17,7 @@ import asyncio
 
 import httpx
 import fal_client
-import edge_tts  # Yangi bepul ovoz moduli
+import edge_tts  # Bepul ovoz moduli
 from i18n import t, LANGUAGES, DEFAULT_LANGUAGE
 from telegram import (
     Update,
@@ -46,15 +46,13 @@ ADMIN_ID = os.environ.get("ADMIN_ID", "BU_YERGA_TELEGRAM_ID_INGIZNI_YOZING")
 PAYMENT_CARD_NUMBER = os.environ.get("PAYMENT_CARD_NUMBER", "8600 XXXX XXXX XXXX")
 PAYMENT_CARD_OWNER = os.environ.get("PAYMENT_CARD_OWNER", "F.I.SH.")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "@sizning_username")
-COIN_PRICE_SOM = int(os.environ.get("COIN_PRICE_SOM", "400"))  # 1 coin narxi (so'mda)
-COIN_PRICE_RUB = float(os.environ.get("COIN_PRICE_RUB", "3"))  # 1 coin narxi (rublda)
+COIN_PRICE_SOM = int(os.environ.get("COIN_PRICE_SOM", "400"))
+COIN_PRICE_RUB = float(os.environ.get("COIN_PRICE_RUB", "3"))
 
 BOT_NAME = "MUBORAKXON"
-WELCOME_IMAGE_PATH = "welcome.jpg"  # banner rasmini shu nom bilan loyihaga qo'ying
+WELCOME_IMAGE_PATH = "welcome.jpg"
 
 MODEL_NAME = "claude-sonnet-4-6"
-
-# Higgsfield matndan rasm endpointi
 HF_MODEL_ENDPOINT = "https://higgsfield.ai"
 
 VIDEO_MODELS = {
@@ -62,7 +60,6 @@ VIDEO_MODELS = {
     "kling": {"label": "🔵 Kling 1.6 (sifatli)", "model_id": "fal-ai/kling-video/v1.6/standard/text-to-video"},
 }
 
-# fal.ai platformasidagi rasmga stil berish modeli
 FAL_STYLE_MODEL = "fal-ai/flux/dev/image-to-image"
 MUSIC_MODEL_ID = "fal-ai/minimax-music"
 
@@ -97,7 +94,6 @@ BTN_HELP = "ℹ️ Yordam"
 BTN_VIDEO_WAN = VIDEO_MODELS["wan"]["label"]
 BTN_VIDEO_KLING = VIDEO_MODELS["kling"]["label"]
 
-# === TAYYOR STILLAR (shablonlar) ===
 STYLE_TEMPLATES = {
     "bw_portrait": {
         "label": "🖤 Qora-oq portret",
@@ -137,7 +133,7 @@ awaiting_video_model_choice: dict[int, bool] = {}
 awaiting_video_prompt: dict[int, str] = {}
 awaiting_voice_text: dict[int, bool] = {}
 awaiting_music_prompt: dict[int, bool] = {}
-awaiting_style_photo: dict[int, str] = {}  # chat_id -> style_key
+awaiting_style_photo: dict[int, str] = {}
 
 BONUS_FILE = "daily_bonus.json"
 LANG_FILE = "user_languages.json"
@@ -303,3 +299,12 @@ async def generate_higgsfield_image(prompt: str) -> str | None:
 
             if status == "completed":
                 results = status_data.get("images") or status_data.get("results") or []
+                if results:
+                    return results[0].get("url")
+                return None
+            if status in ("failed", "nsfw", "cancelled"):
+                return None
+    return None
+
+
+async def apply_fal_ai_style(image_url: str, style_prompt: str) -> str | None:
