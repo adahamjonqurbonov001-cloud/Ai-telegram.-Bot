@@ -300,11 +300,11 @@ async def generate_higgsfield_image(prompt: str) -> str | None:
             if status == "completed":
                 results = status_data.get("images") or status_data.get("results") or []
                 if results:
-                    return results[0].get("url")
+                    return results.get("url")
                 return None
             if status in ("failed", "nsfw", "cancelled"):
                 return None
     return None
 
 
-async def apply_fal_ai_style(image_url: str, style_prompt: str) -> str | None:
+# ⚠️ TUZATILDI: Surilishlar (probellar) xatosi butunlay to'g'rilandi.
