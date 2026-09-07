@@ -515,6 +515,34 @@ def is_admin(
     return str(user_id) == str(ADMIN_ID)
 
 
+def escape_markdown_v1(text: str) -> str:
+    """
+    Telegram'ning eski (legacy) Markdown rejimida
+    xavfli belgilarni ("_", "*", "`", "[") oldiga
+    backslash qo'yib xavfsizlantiradi.
+
+    MUHIM: Railway Variables'dagi ADMIN_USERNAME yoki
+    PAYMENT_CARD_OWNER kabi qiymatlarda "_" (pastki chiziq)
+    bo'lsa (masalan "@Aziz_Admin"), bu belgi Markdown'da
+    *kursiv* belgisi sifatida talqin qilinadi va agar juft
+    bo'lmasa, Telegram butun xabarni "Can't parse entities"
+    xatosi bilan rad etadi. Bunday xato ushlanmagani uchun
+    foydalanuvchiga hech qanday javob bormasdi — shu funksiya
+    va quyidagi try/except shu muammoni oldini oladi.
+    """
+
+    if text is None:
+        return ""
+
+    for char in ("_", "*", "`", "["):
+        text = text.replace(
+            char,
+            "\\" + char,
+        )
+
+    return text
+
+
 # ============================================================
 # MENYU
 # ============================================================
@@ -1088,26 +1116,86 @@ async def show_buy_coins(
         COIN_PRICE_SOM * 100
     )
 
-    await update.message.reply_text(
-        t(
-            lang,
-            "buy_coins_info",
-            price_som=COIN_PRICE_SOM,
-            price_rub=COIN_PRICE_RUB,
-            price_100_som=(
-                f"{price_100_som:,}"
-                .replace(",", " ")
+    try:
+
+        await update.message.reply_text(
+            t(
+                lang,
+                "buy_coins_info",
+                price_som=COIN_PRICE_SOM,
+                price_rub=COIN_PRICE_RUB,
+                price_100_som=(
+                    f"{price_100_som:,}"
+                    .replace(",", " ")
+                ),
+                card_number=escape_markdown_v1(
+                    PAYMENT_CARD_NUMBER
+                ),
+                card_owner=escape_markdown_v1(
+                    PAYMENT_CARD_OWNER
+                ),
+                admin_username=escape_markdown_v1(
+                    ADMIN_USERNAME
+                ),
+                user_id=chat_id,
             ),
-            card_number=PAYMENT_CARD_NUMBER,
-            card_owner=PAYMENT_CARD_OWNER,
-            admin_username=ADMIN_USERNAME,
-            user_id=chat_id,
-        ),
-        parse_mode="Markdown",
-        reply_markup=main_menu_keyboard(
-            lang
-        ),
-    )
+            parse_mode="Markdown",
+            reply_markup=main_menu_keyboard(
+                lang
+            ),
+        )
+
+    except Exception as e:
+
+        # MUHIM: avval bu yerda try/except yo'q edi —
+        # xato (masalan Markdown parse xatosi) hech
+        # qanday javobsiz "yutilib" ketardi va foydalanuvchi
+        # tugmani necha marta bossa ham hech narsa
+        # ko'rmasdi. Endi xato Railway logiga yoziladi va
+        # foydalanuvchi kamida oddiy matn ko'radi.
+
+        logger.error(
+            f"show_buy_coins xatosi: {e}"
+        )
+
+        try:
+
+            await update.message.reply_text(
+                t(
+                    lang,
+                    "buy_coins_info",
+                    price_som=COIN_PRICE_SOM,
+                    price_rub=COIN_PRICE_RUB,
+                    price_100_som=(
+                        f"{price_100_som:,}"
+                        .replace(",", " ")
+                    ),
+                    card_number=PAYMENT_CARD_NUMBER,
+                    card_owner=PAYMENT_CARD_OWNER,
+                    admin_username=ADMIN_USERNAME,
+                    user_id=chat_id,
+                ),
+                reply_markup=main_menu_keyboard(
+                    lang
+                ),
+            )
+
+        except Exception as e2:
+
+            logger.error(
+                "show_buy_coins zaxira "
+                f"urinishi ham xato berdi: {e2}"
+            )
+
+            await update.message.reply_text(
+                "❌ Xatolik yuz berdi. "
+                "Iltimos, keyinroq urinib "
+                "ko'ring yoki admin bilan "
+                "bog'laning.",
+                reply_markup=main_menu_keyboard(
+                    lang
+                ),
+            )
 
 
 # ============================================================
