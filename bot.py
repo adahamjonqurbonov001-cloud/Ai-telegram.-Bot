@@ -131,8 +131,23 @@ WELCOME_IMAGE_PATH = "welcome.jpg"
 
 MODEL_NAME = "claude-sonnet-4-6"
 
-# edge-tts ovozi
-TTS_VOICE = "uz-UZ-MadinaNeural"
+# edge-tts ovozlari — har bir interfeys tili uchun mos ovoz.
+# MUHIM: avval TTS_VOICE bitta qiymatga (faqat uz-UZ) qattiq
+# bog'langan edi, shuning uchun rus/qozoq va h.k. tillarda
+# yozilgan matn ovozga aylantirilganda xato chiqar edi (Microsoft
+# TTS xizmati mos kelmagan tildagi matnni rad etadi).
+# ky (qirg'iz) va tg (tojik) uchun Microsoft edge-tts'da tabiiy
+# ovoz yo'q, shuning uchun ular ruscha ovozga zaxiralangan.
+TTS_VOICE_MAP = {
+    "uz": "uz-UZ-MadinaNeural",
+    "ru": "ru-RU-SvetlanaNeural",
+    "kk": "kk-KZ-AigulNeural",
+    "en": "en-US-JennyNeural",
+    "tg": "ru-RU-SvetlanaNeural",  # tg uchun tabiiy ovoz yo'q
+    "ky": "ru-RU-SvetlanaNeural",  # ky uchun tabiiy ovoz yo'q
+}
+
+DEFAULT_TTS_VOICE = "uz-UZ-MadinaNeural"
 
 
 # ============================================================
@@ -1783,9 +1798,14 @@ async def generate_voice_from_text(
 
     try:
 
+        selected_voice = TTS_VOICE_MAP.get(
+            lang,
+            DEFAULT_TTS_VOICE,
+        )
+
         communicate = edge_tts.Communicate(
             text,
-            TTS_VOICE,
+            selected_voice,
         )
 
         await communicate.save(
