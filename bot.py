@@ -27,6 +27,7 @@ Railway → Variables:
     ADMIN_USERNAME
     COIN_PRICE_SOM
     COIN_PRICE_RUB
+    DATA_DIR  (ixtiyoriy — pastga qarang, "MUHIM: DATA SAQLASH" bo'limi)
 """
 
 import os
@@ -159,6 +160,9 @@ VIDEO_MODELS = {
 
 MUSIC_MODEL_ID = "fal-ai/minimax-music"
 
+# fal.ai rasmga stil berish uchun model
+STYLE_MODEL_ID = "fal-ai/flux/dev/image-to-image"
+
 
 # ============================================================
 # COIN NARXLARI
@@ -175,9 +179,27 @@ COIN_COST_MUSIC = 15
 
 DAILY_BONUS_AMOUNT = 10
 
-COINS_FILE = "coins.json"
-BONUS_FILE = "daily_bonus.json"
-LANG_FILE = "user_languages.json"
+# ------------------------------------------------------------
+# MUHIM: DATA SAQLASH
+# ------------------------------------------------------------
+# Railway'ning standart fayl tizimi VAQTINCHALIKDIR: har yangi
+# deploy (git push) qilinganda konteyner qayta yaratiladi va
+# unga yozilgan barcha fayllar (shu jumladan coins.json) YO'QOLADI.
+# Buning oldini olish uchun ikki yo'l bor:
+#   1) Railway'da xizmatga "Volume" biriktiring (masalan /data
+#      manziliga) va Variables'ga DATA_DIR=/data qo'shing —
+#      shunda quyidagi kod avtomatik o'sha joyga yozadi.
+#   2) Yoki kelajakda coins.json o'rniga haqiqiy bazaga
+#      (Postgres/Redis — Railway'da bepul qo'shiladi) o'ting.
+# DATA_DIR sozlanmasa, avvalgidek joriy papkaga yozadi (xatarli).
+DATA_DIR = os.environ.get("DATA_DIR", ".")
+
+if DATA_DIR != "." and not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+COINS_FILE = os.path.join(DATA_DIR, "coins.json")
+BONUS_FILE = os.path.join(DATA_DIR, "daily_bonus.json")
+LANG_FILE = os.path.join(DATA_DIR, "user_languages.json")
 
 
 # ============================================================
@@ -786,24 +808,29 @@ async def apply_fal_ai_style(
         fal-ai/flux/dev/image-to-image
 
     Parametrlar:
-        strength = 0.65
-        image_size = square_hd
+        image_url (fal CDN'dan olingan manzil)
+        prompt
     """
 
     def run_generation():
 
+        # MUHIM TUZATISH: fal_client.upload'ning ikkinchi
+        # argumenti fayl NOMI emas, balki content_type
+        # bo'lishi kerak (masalan "image/jpeg"). Avvalgi kod
+        # "image.jpg"ni content_type sifatida yuborgani
+        # uchun fal.ai serveri faylni noto'g'ri turdagi
+        # ma'lumot deb qabul qilishi mumkin edi.
         image_url = fal_client.upload(
             image_bytes,
+            "image/jpeg",
             "image.jpg",
         )
 
         result = fal_client.subscribe(
-            "fal-ai/flux/dev/image-to-image",
+            STYLE_MODEL_ID,
             arguments={
                 "image_url": image_url,
                 "prompt": style_prompt,
-                "strength": 0.65,
-                "image_size": "square_hd",
             },
         )
 
