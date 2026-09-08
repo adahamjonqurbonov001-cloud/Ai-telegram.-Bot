@@ -830,6 +830,83 @@ async def translate_prompt_to_english(
         return text
 
 
+# fal.ai FLUX.1 [dev] — umumiy maqsadli matndan-rasmga model.
+# MUHIM: Higgsfield Soul (yuqoridagi generate_higgsfield_image)
+# aslida maxsus PORTRET/MODA/LIFESTYLE fotosurat generatori —
+# umumiy narsalar ("olmos", "olma" kabi) so'ralganda ham o'zining
+# portret-fotosurat uslubiga qaytib ketadi. Shuning uchun asosiy
+# "Rasm yaratish" funksiyasi endi shu fal.ai FLUX modeliga
+# o'tkazildi — u har xil mavzularda ancha ishonchli natija beradi.
+IMAGE_MODEL_ID = "fal-ai/flux/dev"
+
+# fal.ai FLUX faqat oldindan belgilangan 6 ta "image_size"
+# qiymatini qabul qiladi — Higgsfield'dagi kabi erkin "3:2"/"2:3"
+# formatini emas. Shu sababli eng yaqin mosini tanlaymiz.
+FAL_ASPECT_TO_IMAGE_SIZE = {
+    "1:1": "square_hd",
+    "9:16": "portrait_16_9",
+    "16:9": "landscape_16_9",
+    "3:4": "portrait_4_3",
+    "4:3": "landscape_4_3",
+    "3:2": "landscape_4_3",
+    "2:3": "portrait_4_3",
+}
+
+
+async def generate_fal_image(
+    prompt: str,
+    aspect_ratio: str = "1:1",
+) -> str | None:
+
+    english_prompt = await translate_prompt_to_english(
+        prompt
+    )
+
+    image_size = FAL_ASPECT_TO_IMAGE_SIZE.get(
+        aspect_ratio,
+        "square_hd",
+    )
+
+    def run_generation():
+
+        return fal_client.subscribe(
+            IMAGE_MODEL_ID,
+            arguments={
+                "prompt": english_prompt,
+                "image_size": image_size,
+            },
+        )
+
+    result = await asyncio.to_thread(
+        run_generation
+    )
+
+    if not isinstance(
+        result,
+        dict,
+    ):
+        return None
+
+    images = result.get(
+        "images"
+    ) or []
+
+    if not images:
+        return None
+
+    first_image = images[0]
+
+    if isinstance(
+        first_image,
+        dict,
+    ):
+        return first_image.get(
+            "url"
+        )
+
+    return None
+
+
 async def generate_higgsfield_image(
     prompt: str,
     aspect_ratio: str = "1:1",
@@ -2511,10 +2588,7 @@ async def generate_image_from_prompt(
 
         return
 
-    if (
-        not HF_API_KEY_ID
-        or not HF_API_KEY_SECRET
-    ):
+    if not FAL_KEY or "BU_YERGA" in FAL_KEY:
 
         await update.message.reply_text(
             t(
@@ -2543,7 +2617,7 @@ async def generate_image_from_prompt(
     try:
 
         image_url = (
-            await generate_higgsfield_image(
+            await generate_fal_image(
                 prompt
             )
         )
