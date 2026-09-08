@@ -703,6 +703,49 @@ STYLE_TEMPLATES = {
             "the person's identity and facial features."
         ),
     },
+
+    "mini_statue_desk": {
+        "label": "🏆 Mini haykalcha (stolda)",
+        "prompt": (
+            "Transform the provided photo into a "
+            "professional business portrait of the "
+            "person sitting at a modern office desk, "
+            "confidently holding a small collectible "
+            "figurine/statuette that looks exactly like "
+            "them in the palm of their hand. Sharp "
+            "studio lighting, shallow depth of field, "
+            "modern office background. Preserve the "
+            "person's identity and facial features."
+        ),
+    },
+
+    "ink_portrait_color": {
+        "label": "🖊 Rangli siyoh portret",
+        "prompt": (
+            "Transform the provided photo into a "
+            "detailed colored ink and pencil "
+            "illustration portrait, fine crosshatching "
+            "line work combined with selective color "
+            "accents on clothing, hand-drawn editorial "
+            "illustration style. Preserve the person's "
+            "identity and facial features."
+        ),
+    },
+
+    "clone_multiply": {
+        "label": "👥 Klon effekti",
+        "prompt": (
+            "Transform the provided photo into a "
+            "surreal multiplicity composition showing "
+            "five identical copies of the same person "
+            "standing and sitting in different natural "
+            "poses across an open plaza, cinematic "
+            "overhead-angle photography, consistent "
+            "lighting across all copies. Preserve the "
+            "person's identity and facial features in "
+            "every copy."
+        ),
+    },
 }
 
 
@@ -732,9 +775,70 @@ def styles_inline_keyboard():
 # HIGGSFIELD — RASM YARATISH
 # ============================================================
 
+async def translate_prompt_to_english(
+    text: str,
+) -> str:
+    """
+    Rasm generatsiyasi promptini ingliz tiliga tarjima qiladi.
+
+    MUHIM: Higgsfield'ning Soul modeli asosan ingliz tilidagi
+    promptlar bilan yaxshi ishlaydi. O'zbek (yoki boshqa)
+    tildagi matnni to'g'ridan-to'g'ri yuborish noto'g'ri yoki
+    mutlaqo aloqasiz natijalarga olib kelishi mumkin edi
+    (masalan "olmos" so'zi "olma" rasmi bilan chalkashtirilgan
+    holat kuzatilgan). Shuning uchun har bir rasm/video
+    so'rovidan oldin promptni ingliz tiliga o'giramiz.
+    """
+
+    try:
+
+        response = await asyncio.to_thread(
+            claude_client.messages.create,
+            model=MODEL_NAME,
+            max_tokens=200,
+            system=(
+                "You translate short image-generation "
+                "prompts into natural, vivid English. "
+                "Output ONLY the translated prompt text — "
+                "no quotes, no explanation, no preamble. "
+                "If the text is already in English, return "
+                "it unchanged (lightly polished if useful)."
+            ),
+            messages=[
+                {
+                    "role": "user",
+                    "content": text,
+                }
+            ],
+        )
+
+        translated = "".join(
+            block.text
+            for block in response.content
+            if block.type == "text"
+        ).strip()
+
+        return translated or text
+
+    except Exception as e:
+
+        logger.warning(
+            "Prompt tarjimasi muvaffaqiyatsiz, "
+            f"asl matn ishlatiladi: {e}"
+        )
+
+        return text
+
+
 async def generate_higgsfield_image(
     prompt: str,
+    aspect_ratio: str = "1:1",
+    resolution: str = "1.5k",
 ) -> str | None:
+
+    english_prompt = await translate_prompt_to_english(
+        prompt
+    )
 
     headers = {
         "Authorization": (
@@ -745,10 +849,16 @@ async def generate_higgsfield_image(
         "Content-Type": "application/json",
     }
 
+    # MUHIM TUZATISH: avval resolution har doim "720p" edi —
+    # bu video uchun ishlatiladigan qiymat. Higgsfield Soul
+    # rasm modeli aslida "1.5k" yoki "2k" qiymatlarini kutadi
+    # (rasmiy yordam markazi ma'lumotiga ko'ra). Endi bu
+    # funksiya chaqiruvchidan aspect_ratio/resolution qabul
+    # qiladi, standart qiymatlar to'g'irlandi.
     payload = {
-        "prompt": prompt,
-        "aspect_ratio": "1:1",
-        "resolution": "720p",
+        "prompt": english_prompt,
+        "aspect_ratio": aspect_ratio,
+        "resolution": resolution,
     }
 
     async with httpx.AsyncClient(
@@ -817,6 +927,103 @@ async def generate_higgsfield_image(
 # ============================================================
 # TELEGRAM RASMINI YUKLAB OLISH
 # ============================================================
+
+async def generate_fal_video(
+    prompt: str,
+    model_id: str,
+) -> str | None:
+    """
+    fal.ai orqali video yaratadi (qayta ishlatiladigan —
+    Telegram handler ham, Mini App API ham shu funksiyani
+    chaqiradi).
+    """
+
+    english_prompt = await translate_prompt_to_english(
+        prompt
+    )
+
+    def run_generation():
+
+        return fal_client.subscribe(
+            model_id,
+            arguments={
+                "prompt": english_prompt
+            },
+        )
+
+    result = await asyncio.to_thread(
+        run_generation
+    )
+
+    if not isinstance(
+        result,
+        dict,
+    ):
+        return None
+
+    if (
+        "video" in result
+        and isinstance(
+            result["video"],
+            dict,
+        )
+    ):
+        return result["video"].get(
+            "url"
+        )
+
+    if "video_url" in result:
+        return result["video_url"]
+
+    return None
+
+
+async def generate_fal_music(
+    prompt: str,
+) -> str | None:
+    """
+    fal.ai orqali musiqa yaratadi (qayta ishlatiladigan).
+    """
+
+    english_prompt = await translate_prompt_to_english(
+        prompt
+    )
+
+    def run_generation():
+
+        return fal_client.subscribe(
+            MUSIC_MODEL_ID,
+            arguments={
+                "prompt": english_prompt
+            },
+        )
+
+    result = await asyncio.to_thread(
+        run_generation
+    )
+
+    if not isinstance(
+        result,
+        dict,
+    ):
+        return None
+
+    if (
+        "audio" in result
+        and isinstance(
+            result["audio"],
+            dict,
+        )
+    ):
+        return result["audio"].get(
+            "url"
+        )
+
+    if "audio_url" in result:
+        return result["audio_url"]
+
+    return None
+
 
 async def download_telegram_image(
     image_url: str,
@@ -2816,7 +3023,14 @@ async def handle_message(
 # MAIN
 # ============================================================
 
-def main():
+def build_application():
+    """
+    Telegram bot Application obyektini yaratadi va barcha
+    handlerlarni ro'yxatdan o'tkazadi, lekin ISHGA TUSHIRMAYDI
+    (run_polling chaqirmaydi). Bu funksiya alohida ham
+    (bot.py orqali), ham server.py (bot + Mini App veb-server
+    birga) orqali qayta ishlatiladi.
+    """
 
     missing = []
 
@@ -2964,8 +3178,17 @@ def main():
         )
     )
 
+    return app
+
+
+def main():
+
+    app = build_application()
+
     print(
-        f"🤖 {BOT_NAME} ishga tushdi..."
+        f"🤖 {BOT_NAME} ishga tushdi "
+        "(faqat bot, Mini App "
+        "serversiz)..."
     )
 
     app.run_polling()
