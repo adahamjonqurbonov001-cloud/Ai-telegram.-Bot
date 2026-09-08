@@ -833,7 +833,7 @@ async def translate_prompt_to_english(
 async def generate_higgsfield_image(
     prompt: str,
     aspect_ratio: str = "1:1",
-    resolution: str = "1.5k",
+    resolution: str = "720p",
 ) -> str | None:
 
     english_prompt = await translate_prompt_to_english(
@@ -849,12 +849,12 @@ async def generate_higgsfield_image(
         "Content-Type": "application/json",
     }
 
-    # MUHIM TUZATISH: avval resolution har doim "720p" edi —
-    # bu video uchun ishlatiladigan qiymat. Higgsfield Soul
-    # rasm modeli aslida "1.5k" yoki "2k" qiymatlarini kutadi
-    # (rasmiy yordam markazi ma'lumotiga ko'ra). Endi bu
-    # funksiya chaqiruvchidan aspect_ratio/resolution qabul
-    # qiladi, standart qiymatlar to'g'irlandi.
+    # MUHIM TUZATISH (2-marta): "1.5k"/"2k" qiymatlari
+    # Higgsfield'ning veb-interfeysi (Soul 2.0 GUI) uchun,
+    # BIZ ishlatayotgan REST API endpointi uchun EMAS edi —
+    # bu xato so'rovni butunlay buzib, rasm yaratilishini
+    # to'xtatib qo'ygan edi. Rasmiy REST API hujjatidagi
+    # tasdiqlangan misolga qaytarildi: "720p".
     payload = {
         "prompt": english_prompt,
         "aspect_ratio": aspect_ratio,
