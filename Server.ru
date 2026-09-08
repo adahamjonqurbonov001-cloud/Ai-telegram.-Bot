@@ -59,6 +59,7 @@ from bot import (
     change_balance,
     claude_client,
     conversation_history,
+    generate_fal_image,
     generate_fal_music,
     generate_fal_video,
     generate_higgsfield_image,
@@ -457,7 +458,6 @@ async def api_generate_image(
     init_data: str = Form(...),
     prompt: str = Form(...),
     aspect_ratio: str = Form("1:1"),
-    resolution: str = Form("720p"),
 ):
 
     user = verify_telegram_init_data(
@@ -477,10 +477,9 @@ async def api_generate_image(
 
     try:
 
-        image_url = await generate_higgsfield_image(
+        image_url = await generate_fal_image(
             prompt,
             aspect_ratio=aspect_ratio,
-            resolution=resolution,
         )
 
     except Exception as e:
