@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MUBORAKXON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- ============ YON PANEL ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">✨</span>
+      <span class="brand-name">MUBORAKXON</span>
+    </div>
+
+    <button class="sidebar-newchat" id="newChatBtn">
+      <span>➕</span> Yangi suhbat
+    </button>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="chat">
+        <span class="nav-icon">💬</span> Suhbat
+      </button>
+      <button class="nav-item" data-view="gallery">
+        <span class="nav-icon">🖼</span> Tayyor stillar
+      </button>
+      <button class="nav-item" data-view="help">
+        <span class="nav-icon">❓</span> Yordam
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="balance-chip" id="balanceChip">
+        <span class="coin-dot"></span>
+        <span id="balanceValue">—</span> coin
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ TOPBAR ============ -->
+  <header class="topbar">
+    <button class="icon-btn" id="menuBtn" aria-label="Menyu">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+    <span class="topbar-title" id="topbarTitle">Suhbat</span>
+    <div class="balance-chip balance-chip-top" id="balanceChipTop">
+      <span class="coin-dot"></span>
+      <span id="balanceValueTop">—</span>
+    </div>
+  </header>
+
+  <!-- ============ SUHBAT OYNASI ============ -->
+  <main class="view active" id="chatView">
+    <div class="messages" id="messages">
+      <div class="msg msg-bot">
+        <div class="bubble">
+          Salom! 👋 Men MUBORAKXON. Pastdagi rejimlardan birini tanlang
+          va menga yozing — matn, rasm, video, musiqa yoki ovoz yarataman.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ GALEREYA (Tayyor stillar) ============ -->
+  <main class="view" id="galleryView">
+    <p class="screen-lead">Rasmingizni tanlang, stilni bosing — qolganini biz qilamiz.</p>
+    <div class="grid" id="stylesGrid"></div>
+  </main>
+
+  <!-- ============ YORDAM ============ -->
+  <main class="view" id="helpView">
+    <div class="help-card">
+      <h2>Qanday ishlaydi</h2>
+      <p><strong>💬 Matn</strong> — MUBORAKXON bilan oddiy suhbat.</p>
+      <p><strong>🎨 Rasm</strong> — yozgan tavsifingiz asosida rasm yaratadi.</p>
+      <p><strong>🎬 Video</strong> — tavsifdan qisqa video yaratadi.</p>
+      <p><strong>🎵 Musiqa</strong> — tavsifdan musiqa yaratadi.</p>
+      <p><strong>🔊 Ovoz</strong> — matningizni ovozga aylantiradi.</p>
+      <p><strong>🖼 Tayyor stillar</strong> — o'z rasmingizga tayyor stil qo'llaydi.</p>
+      <p class="help-muted">Har bir amal balansingizdan coin yechadi — narxlarni pastdagi balans chipida ko'rasiz.</p>
+    </div>
+  </main>
+
+  <!-- ============ PASTKI KOMPOZER (faqat chat view'da) ============ -->
+  <footer class="composer" id="composer">
+
+    <div class="settings-row hidden" id="imageSettingsRow">
+      <div class="settings-label">Format</div>
+      <div class="chip-scroll" id="aspectRatioRow">
+        <button class="mini-chip active" data-aspect="1:1">1:1</button>
+        <button class="mini-chip" data-aspect="9:16">9:16</button>
+        <button class="mini-chip" data-aspect="16:9">16:9</button>
+        <button class="mini-chip" data-aspect="3:4">3:4</button>
+        <button class="mini-chip" data-aspect="4:3">4:3</button>
+        <button class="mini-chip" data-aspect="3:2">3:2</button>
+        <button class="mini-chip" data-aspect="2:3">2:3</button>
+      </div>
+    </div>
+
+    <div class="settings-row hidden" id="videoModelRow">
+      <div class="settings-label">Model</div>
+      <div class="chip-scroll">
+        <button class="mini-chip active" data-video-model="wan">🟢 Wan (arzon)</button>
+        <button class="mini-chip" data-video-model="kling">🔵 Kling (sifatli)</button>
+      </div>
+    </div>
+
+    <div class="mode-row" id="modeRow">
+      <button class="mode-chip active" data-mode="text">💬 Matn</button>
+      <button class="mode-chip" data-mode="image">🎨 Rasm</button>
+      <button class="mode-chip" data-mode="video">🎬 Video</button>
+      <button class="mode-chip" data-mode="music">🎵 Musiqa</button>
+      <button class="mode-chip" data-mode="voice">🔊 Ovoz</button>
+    </div>
+
+    <div class="input-row">
+      <button class="icon-btn mic-btn hidden" id="micBtn" aria-label="Ovozli kiritish">🎤</button>
+      <textarea
+        id="messageInput"
+        class="message-input"
+        placeholder="Xabar yozing…"
+        rows="1"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" aria-label="Yuborish">➤</button>
+    </div>
+  </footer>
+
+  <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden-input" />
+
+  <script src="app.js"></script>
+</body>
+</html>
