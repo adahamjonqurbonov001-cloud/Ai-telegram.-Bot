@@ -756,32 +756,80 @@ async def run_bot_polling():
 
     global telegram_application
 
-    telegram_application = build_application()
-
-    await telegram_application.initialize()
-    await telegram_application.start()
-
-    await telegram_application.updater.start_polling()
-
-    logger.info(
-        "🤖 MUBORAKXON bot (polling) va "
-        "Mini App servera birga ishga tushdi."
-    )
-
-    # Jarayon tirik turishi uchun cheksiz kutish.
-    # FastAPI/uvicorn HTTP so'rovlarini alohida qabul qilaveradi.
     try:
+
+        telegram_application = build_application()
+
+        await telegram_application.initialize()
+        await telegram_application.start()
+
+        await telegram_application.updater.start_polling()
+
+        logger.info(
+            "🤖 MUBORAKXON bot (polling) va "
+            "Mini App servera birga ishga tushdi."
+        )
+
+        # Jarayon tirik turishi uchun cheksiz kutish.
+        # FastAPI/uvicorn HTTP so'rovlarini alohida
+        # qabul qilaveradi.
         await asyncio.Event().wait()
+
+    except Exception:
+
+        # MUHIM: bu try/except bo'lmasa, bot ishga
+        # tushishida xato chiqsa (masalan noto'g'ri token,
+        # tarmoq xatosi va h.k.), bu xato hech qayerga
+        # yozilmasdan "yutilib" ketardi — bot esa
+        # javob bermay qolardi, Railway logida esa
+        # hech narsa ko'rinmasdi.
+        logger.exception(
+            "🔴 Bot polling ishga tushirishda "
+            "XATO — bot xabarlarga javob "
+            "bermaydi:"
+        )
+
+        raise
+
     finally:
-        await telegram_application.updater.stop()
-        await telegram_application.stop()
-        await telegram_application.shutdown()
+
+        if telegram_application is not None:
+            await telegram_application.updater.stop()
+            await telegram_application.stop()
+            await telegram_application.shutdown()
+
+
+# MUHIM: yaratilgan asyncio vazifasiga kuchli (doimiy)
+# havola saqlanadi. Agar bu global o'zgaruvchida
+# saqlanmasa, Python'ning chiqindi yig'uvchisi vazifani
+# kutilmaganda to'xtatib qo'yishi mumkin edi — bu ham
+# "bot sababsiz javob bermay qoladi" muammosining
+# ehtimoliy manbai edi.
+_bot_polling_task = None
+
+
+def _on_bot_polling_done(task: asyncio.Task):
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.error(
+            "🔴 Bot polling vazifasi kutilmaganda "
+            f"to'xtadi: {exc}"
+        )
 
 
 @api.on_event("startup")
 async def on_startup():
-    asyncio.create_task(
+
+    global _bot_polling_task
+
+    _bot_polling_task = asyncio.create_task(
         run_bot_polling()
+    )
+
+    _bot_polling_task.add_done_callback(
+        _on_bot_polling_done
     )
 
 
