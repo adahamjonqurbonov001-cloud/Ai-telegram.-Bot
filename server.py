@@ -30,6 +30,7 @@ import json
 import logging
 import os
 import time
+import traceback
 from urllib.parse import parse_qsl
 
 import edge_tts
@@ -84,6 +85,46 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# ADMIN'GA XATOLIK YUBORISH (DIAGNOSTIKA)
+# ============================================================
+#
+# bot.py'dagi notify_admin_error bilan bir xil maqsadda —
+# lekin bu yerda `context` yo'q, shuning uchun to'g'ridan-to'g'ri
+# telegram_application.bot orqali yuboradi (pastda aniqlanadi).
+
+async def notify_admin_error_miniapp(title: str):
+
+    if not ADMIN_ID or "BU_YERGA" in ADMIN_ID:
+        return
+
+    if telegram_application is None:
+        return
+
+    tb_text = traceback.format_exc()
+
+    if len(tb_text) > 3500:
+        tb_text = "...\n" + tb_text[-3500:]
+
+    try:
+
+        await telegram_application.bot.send_message(
+            chat_id=int(ADMIN_ID),
+            text=(
+                f"🔴 XATOLIK (Mini App): {title}\n\n"
+                f"```\n{tb_text}\n```"
+            ),
+            parse_mode="Markdown",
+        )
+
+    except Exception as notify_exc:
+
+        logger.warning(
+            "Admin'ga xatolik xabarini "
+            f"yuborib bo'lmadi: {notify_exc}"
+        )
 
 
 # ============================================================
@@ -297,10 +338,20 @@ async def api_apply_style(
             style_prompt,
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App stil xatosi: {e}"
+        # MUHIM: logger.exception to'liq traceback'ni
+        # Railway logiga yozadi (avval faqat "{e}" — bitta
+        # qator — yozilardi). Qo'shimcha ravishda shu
+        # traceback to'g'ridan-to'g'ri admin'ga Telegram
+        # xabari sifatida yuboriladi.
+
+        logger.exception(
+            f"Mini App stil xatosi ({style_id}):"
+        )
+
+        await notify_admin_error_miniapp(
+            f"Stil qo'llash — {style_id}"
         )
 
         raise HTTPException(
@@ -419,10 +470,14 @@ async def api_chat(
             if block.type == "text"
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App chat xatosi: {e}"
+        logger.exception(
+            "Mini App chat xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App chat"
         )
 
         conversation_history[chat_id] = history
@@ -482,10 +537,14 @@ async def api_generate_image(
             aspect_ratio=aspect_ratio,
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App rasm xatosi: {e}"
+        logger.exception(
+            "Mini App rasm xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App rasm yaratish"
         )
 
         raise HTTPException(
@@ -550,10 +609,14 @@ async def api_generate_video(
             model_id,
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App video xatosi: {e}"
+        logger.exception(
+            "Mini App video xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App video yaratish"
         )
 
         raise HTTPException(
@@ -606,10 +669,14 @@ async def api_generate_music(
             prompt
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App musiqa xatosi: {e}"
+        logger.exception(
+            "Mini App musiqa xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App musiqa yaratish"
         )
 
         raise HTTPException(
@@ -687,10 +754,14 @@ async def api_generate_voice(
         ) as f:
             audio_bytes = f.read()
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Mini App ovoz xatosi: {e}"
+        logger.exception(
+            "Mini App ovoz xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App ovoz yaratish"
         )
 
         raise HTTPException(
@@ -846,4 +917,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-    )
+                             )
