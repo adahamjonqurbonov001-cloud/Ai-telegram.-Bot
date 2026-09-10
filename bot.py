@@ -35,6 +35,7 @@ import io
 import json
 import asyncio
 import logging
+import traceback
 
 import httpx
 import fal_client
@@ -296,6 +297,51 @@ awaiting_style_photo: dict[
     int,
     str
 ] = {}
+
+
+# ============================================================
+# ADMIN'GA XATOLIK YUBORISH (DIAGNOSTIKA)
+# ============================================================
+#
+# MUHIM: foydalanuvchi mobil qurilmada ishlaydi va Railway
+# loglariga kirish qiyin (skrinshot orqali qidirish kerak
+# bo'lgan). Shu funksiya xatolik yuz berganda TO'LIQ
+# traceback'ni to'g'ridan-to'g'ri ADMIN_ID'ning Telegram
+# chatiga yuboradi — shunda Railway'ga umuman kirish shart
+# bo'lmaydi, xatolik aynan bot ichida ko'rinadi.
+
+async def notify_admin_error(
+    context: ContextTypes.DEFAULT_TYPE,
+    title: str,
+):
+    if not ADMIN_ID or "BU_YERGA" in ADMIN_ID:
+        return
+
+    tb_text = traceback.format_exc()
+
+    # Telegram xabar uzunligi ~4096 belgi bilan
+    # cheklangani uchun oxirgi qismini olamiz —
+    # aynan shu joyda xato chiqadi.
+    if len(tb_text) > 3500:
+        tb_text = "...\n" + tb_text[-3500:]
+
+    try:
+
+        await context.bot.send_message(
+            chat_id=int(ADMIN_ID),
+            text=(
+                f"🔴 XATOLIK: {title}\n\n"
+                f"```\n{tb_text}\n```"
+            ),
+            parse_mode="Markdown",
+        )
+
+    except Exception as notify_exc:
+
+        logger.warning(
+            "Admin'ga xatolik xabarini "
+            f"yuborib bo'lmadi: {notify_exc}"
+        )
 
 
 # ============================================================
@@ -1141,12 +1187,8 @@ async def apply_fal_ai_style(
 
     def run_generation():
 
-        # MUHIM TUZATISH: fal_client.upload'ning ikkinchi
-        # argumenti fayl NOMI emas, balki content_type
-        # bo'lishi kerak (masalan "image/jpeg"). Avvalgi kod
-        # "image.jpg"ni content_type sifatida yuborgani
-        # uchun fal.ai serveri faylni noto'g'ri turdagi
-        # ma'lumot deb qabul qilishi mumkin edi.
+        # fal_client.upload(data, content_type, file_name=None)
+        # — rasmiy fal.ai hujjatiga muvofiq tartib.
         image_url = fal_client.upload(
             image_bytes,
             "image/jpeg",
@@ -1907,11 +1949,23 @@ async def process_style_photo(
             ),
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            "fal.ai stil qo'llash "
-            f"xatosi: {e}"
+        # MUHIM: logger.exception butun traceback'ni
+        # Railway logiga yozadi (avval faqat "{e}" — bitta
+        # qator — yozilardi, aynan qaysi qatorda yorilgani
+        # ko'rinmasdi). Qo'shimcha ravishda shu traceback
+        # to'g'ridan-to'g'ri admin'ga Telegram xabari
+        # sifatida yuboriladi — Railway'ga kirish shart
+        # bo'lmaydi.
+
+        logger.exception(
+            "fal.ai stil qo'llash xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            f"Stil qo'llash — {style_key}",
         )
 
         await update.message.reply_text(
@@ -2221,10 +2275,15 @@ async def generate_voice_from_text(
                 ),
             )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"edge-tts xatosi: {e}"
+        logger.exception(
+            "edge-tts xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            "Ovoz yaratish (edge-tts)",
         )
 
         await update.message.reply_text(
@@ -2396,11 +2455,15 @@ async def generate_music_from_prompt(
             ),
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"fal.ai qo'shiq yaratish "
-            f"xatosi: {e}"
+        logger.exception(
+            "fal.ai qo'shiq yaratish xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            "Qo'shiq yaratish",
         )
 
         await update.message.reply_text(
@@ -2538,11 +2601,15 @@ async def generate_video_from_prompt(
             ),
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"fal.ai video yaratish "
-            f"xatosi: {e}"
+        logger.exception(
+            "fal.ai video yaratish xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            "Video yaratish",
         )
 
         await update.message.reply_text(
@@ -2646,11 +2713,15 @@ async def generate_image_from_prompt(
             ),
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Higgsfield rasm yaratish "
-            f"xatosi: {e}"
+        logger.exception(
+            "Higgsfield rasm yaratish xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            "Rasm yaratish",
         )
 
         await update.message.reply_text(
@@ -3045,10 +3116,15 @@ async def handle_message(
             if block.type == "text"
         )
 
-    except Exception as e:
+    except Exception:
 
-        logger.error(
-            f"Anthropic API xatosi: {e}"
+        logger.exception(
+            "Anthropic API xatosi:"
+        )
+
+        await notify_admin_error(
+            context,
+            "Claude chat",
         )
 
         reply_text = t(
