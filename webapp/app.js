@@ -10,6 +10,279 @@ if (tg) {
 
 const initData = tg ? tg.initData : "";
 
+// ============ TARJIMALAR ============
+// MUHIM: bu lug'at bot.py/i18n.py'dagi matnlarga ohangdosh
+// qilib yozilgan — bot qaysi tilni tanlagan bo'lsa (get_lang),
+// Mini App ham o'sha tilda ochiladi (/api/lang orqali so'raladi).
+
+const MINIAPP_I18N = {
+  uz: {
+    newChat: "Yangi suhbat",
+    navChat: "Suhbat",
+    navGallery: "Tayyor stillar",
+    navHelp: "Yordam",
+    titleChat: "Suhbat",
+    titleGallery: "Tayyor stillar",
+    titleHelp: "Yordam",
+    welcomeMessage: "Salom! 👋 Men MUBORAKXON. Pastdagi rejimlardan birini tanlang va menga yozing — matn, rasm, video, musiqa yoki ovoz yarataman.",
+    galleryLead: "Rasmingizni tanlang, stilni bosing — qolganini biz qilamiz.",
+    helpTitle: "Qanday ishlaydi",
+    helpLineText: "💬 Matn — MUBORAKXON bilan oddiy suhbat.",
+    helpLineImage: "🎨 Rasm — yozgan tavsifingiz asosida rasm yaratadi.",
+    helpLineVideo: "🎬 Video — tavsifdan qisqa video yaratadi.",
+    helpLineMusic: "🎵 Musiqa — tavsifdan musiqa yaratadi.",
+    helpLineVoice: "🔊 Ovoz — matningizni ovozga aylantiradi.",
+    helpLineStyles: "🖼 Tayyor stillar — o'z rasmingizga tayyor stil qo'llaydi.",
+    helpNote: "Har bir amal balansingizdan coin yechadi — narxlarni pastdagi balans chipida ko'rasiz.",
+    formatLabel: "Format",
+    modelLabel: "Model",
+    videoModelWan: "🟢 Wan (arzon)",
+    videoModelKling: "🔵 Kling (sifatli)",
+    modeText: "💬 Matn",
+    modeImage: "🎨 Rasm",
+    modeVideo: "🎬 Video",
+    modeMusic: "🎵 Musiqa",
+    modeVoice: "🔊 Ovoz",
+    placeholderText: "Xabar yozing…",
+    placeholderImage: "Qanday rasm chizay? Masalan: yolg'iz archa, qor bosgan tog'…",
+    placeholderVideo: "Video uchun tavsif yozing…",
+    placeholderMusic: "Qanday musiqa yarataylik?",
+    placeholderVoice: "Ovozga aylantirish uchun matn yozing…",
+    pendingText: "Yozmoqda…",
+    pendingImage: "Rasm yaratilmoqda…",
+    pendingVideo: "Video yaratilmoqda (biroz uzoqroq davom etadi)…",
+    pendingMusic: "Musiqa yaratilmoqda…",
+    pendingVoice: "Ovoz yaratilmoqda…",
+    pendingStyle: "Stil qo'llanmoqda…",
+    coinUnit: "coin",
+    newChatStartedMessage: "Yangi suhbat boshlandi! 👋 Nima haqida gaplashamiz?",
+    genericError: "Xatolik",
+    speechLang: "uz-UZ",
+  },
+  ru: {
+    newChat: "Новый чат",
+    navChat: "Чат",
+    navGallery: "Готовые стили",
+    navHelp: "Помощь",
+    titleChat: "Чат",
+    titleGallery: "Готовые стили",
+    titleHelp: "Помощь",
+    welcomeMessage: "Привет! 👋 Я MUBORAKXON. Выберите один из режимов ниже и напишите мне — создам текст, изображение, видео, музыку или голос.",
+    galleryLead: "Выберите фото, нажмите на стиль — остальное сделаем мы.",
+    helpTitle: "Как это работает",
+    helpLineText: "💬 Текст — обычный разговор с MUBORAKXON.",
+    helpLineImage: "🎨 Изображение — создаёт картинку по вашему описанию.",
+    helpLineVideo: "🎬 Видео — создаёт короткое видео по описанию.",
+    helpLineMusic: "🎵 Музыка — создаёт музыку по описанию.",
+    helpLineVoice: "🔊 Голос — превращает ваш текст в голос.",
+    helpLineStyles: "🖼 Готовые стили — применяет готовый стиль к вашему фото.",
+    helpNote: "Каждое действие списывает монеты с баланса — цены смотрите в чипе баланса внизу.",
+    formatLabel: "Формат",
+    modelLabel: "Модель",
+    videoModelWan: "🟢 Wan (дешевле)",
+    videoModelKling: "🔵 Kling (качество)",
+    modeText: "💬 Текст",
+    modeImage: "🎨 Фото",
+    modeVideo: "🎬 Видео",
+    modeMusic: "🎵 Музыка",
+    modeVoice: "🔊 Голос",
+    placeholderText: "Напишите сообщение…",
+    placeholderImage: "Какое изображение нарисовать? Например: одинокая ель, заснеженная гора…",
+    placeholderVideo: "Опишите видео…",
+    placeholderMusic: "Какую музыку создать?",
+    placeholderVoice: "Напишите текст для озвучки…",
+    pendingText: "Печатает…",
+    pendingImage: "Создаём изображение…",
+    pendingVideo: "Создаём видео (займёт чуть больше времени)…",
+    pendingMusic: "Создаём музыку…",
+    pendingVoice: "Создаём голос…",
+    pendingStyle: "Применяем стиль…",
+    coinUnit: "монет",
+    newChatStartedMessage: "Начат новый разговор! 👋 О чём поговорим?",
+    genericError: "Ошибка",
+    speechLang: "ru-RU",
+  },
+  kk: {
+    newChat: "Жаңа чат",
+    navChat: "Чат",
+    navGallery: "Дайын стильдер",
+    navHelp: "Көмек",
+    titleChat: "Чат",
+    titleGallery: "Дайын стильдер",
+    titleHelp: "Көмек",
+    welcomeMessage: "Сәлем! 👋 Мен MUBORAKXON. Төмендегі режимдердің бірін таңдап, маған жазыңыз — мәтін, сурет, видео, музыка немесе дауыс жасаймын.",
+    galleryLead: "Суретіңізді таңдаңыз, стильді басыңыз — қалғанын біз жасаймыз.",
+    helpTitle: "Қалай жұмыс істейді",
+    helpLineText: "💬 Мәтін — MUBORAKXON-мен әдеттегі сөйлесу.",
+    helpLineImage: "🎨 Сурет — сипаттамаңыз бойынша сурет жасайды.",
+    helpLineVideo: "🎬 Видео — сипаттамадан қысқа видео жасайды.",
+    helpLineMusic: "🎵 Музыка — сипаттамадан музыка жасайды.",
+    helpLineVoice: "🔊 Дауыс — мәтініңізді дауысқа айналдырады.",
+    helpLineStyles: "🖼 Дайын стильдер — суретіңізге дайын стиль қолданады.",
+    helpNote: "Әрбір әрекет балансыңыздан тиын алады — бағаларды төмендегі баланс чипінен көресіз.",
+    formatLabel: "Формат",
+    modelLabel: "Модель",
+    videoModelWan: "🟢 Wan (арзан)",
+    videoModelKling: "🔵 Kling (сапалы)",
+    modeText: "💬 Мәтін",
+    modeImage: "🎨 Сурет",
+    modeVideo: "🎬 Видео",
+    modeMusic: "🎵 Музыка",
+    modeVoice: "🔊 Дауыс",
+    placeholderText: "Хабар жазыңыз…",
+    placeholderImage: "Қандай сурет салайын? Мысалы: жалғыз шырша, қар басқан тау…",
+    placeholderVideo: "Видео үшін сипаттама жазыңыз…",
+    placeholderMusic: "Қандай музыка жасайық?",
+    placeholderVoice: "Дауысқа айналдыру үшін мәтін жазыңыз…",
+    pendingText: "Жазуда…",
+    pendingImage: "Сурет жасалуда…",
+    pendingVideo: "Видео жасалуда (біраз уақыт алады)…",
+    pendingMusic: "Музыка жасалуда…",
+    pendingVoice: "Дауыс жасалуда…",
+    pendingStyle: "Стиль қолданылуда…",
+    coinUnit: "тиын",
+    newChatStartedMessage: "Жаңа әңгіме басталды! 👋 Не туралы сөйлесеміз?",
+    genericError: "Қате",
+    speechLang: "kk-KZ",
+  },
+  tg: {
+    newChat: "Чати нав",
+    navChat: "Чат",
+    navGallery: "Услубҳои тайёр",
+    navHelp: "Кӯмак",
+    titleChat: "Чат",
+    titleGallery: "Услубҳои тайёр",
+    titleHelp: "Кӯмак",
+    welcomeMessage: "Салом! 👋 Ман MUBORAKXON. Яке аз режимҳои зеринро интихоб карда ба ман нависед — матн, расм, видео, мусиқӣ ё садо месозам.",
+    galleryLead: "Суратро интихоб кунед, услубро пахш кунед — боқимондаро мо мекунем.",
+    helpTitle: "Чӣ хел кор мекунад",
+    helpLineText: "💬 Матн — сӯҳбати оддӣ бо MUBORAKXON.",
+    helpLineImage: "🎨 Расм — тибқи тавсифи шумо расм месозад.",
+    helpLineVideo: "🎬 Видео — аз тавсиф видеои кӯтоҳ месозад.",
+    helpLineMusic: "🎵 Мусиқӣ — аз тавсиф мусиқӣ месозад.",
+    helpLineVoice: "🔊 Садо — матни шуморо ба садо табдил медиҳад.",
+    helpLineStyles: "🖼 Услубҳои тайёр — ба сурати шумо услуби тайёрро татбиқ мекунад.",
+    helpNote: "Ҳар амал аз балансатон танга мегирад — нархҳоро дар чипи баланс дар поён мебинед.",
+    formatLabel: "Формат",
+    modelLabel: "Модел",
+    videoModelWan: "🟢 Wan (арзон)",
+    videoModelKling: "🔵 Kling (босифат)",
+    modeText: "💬 Матн",
+    modeImage: "🎨 Расм",
+    modeVideo: "🎬 Видео",
+    modeMusic: "🎵 Мусиқӣ",
+    modeVoice: "🔊 Садо",
+    placeholderText: "Паём нависед…",
+    placeholderImage: "Чӣ хел расм кашам? Масалан: арчаи танҳо, кӯҳи барфпӯш…",
+    placeholderVideo: "Барои видео тавсиф нависед…",
+    placeholderMusic: "Чӣ хел мусиқӣ созем?",
+    placeholderVoice: "Барои садо матн нависед…",
+    pendingText: "Менависад…",
+    pendingImage: "Расм сохта мешавад…",
+    pendingVideo: "Видео сохта мешавад (андаке бештар вақт мегирад)…",
+    pendingMusic: "Мусиқӣ сохта мешавад…",
+    pendingVoice: "Садо сохта мешавад…",
+    pendingStyle: "Услуб татбиқ мешавад…",
+    coinUnit: "танга",
+    newChatStartedMessage: "Сӯҳбати нав оғоз ёфт! 👋 Дар бораи чӣ гап занем?",
+    genericError: "Хато",
+    speechLang: "tg-TJ",
+  },
+  ky: {
+    newChat: "Жаңы маек",
+    navChat: "Маек",
+    navGallery: "Даяр стилдер",
+    navHelp: "Жардам",
+    titleChat: "Маек",
+    titleGallery: "Даяр стилдер",
+    titleHelp: "Жардам",
+    welcomeMessage: "Салам! 👋 Мен MUBORAKXON. Төмөнкү режимдердин бирин тандап, мага жазыңыз — текст, сүрөт, видео, музыка же үн түзөм.",
+    galleryLead: "Сүрөтүңүздү тандаңыз, стилди басыңыз — калганын биз кылабыз.",
+    helpTitle: "Кантип иштейт",
+    helpLineText: "💬 Текст — MUBORAKXON менен жөнөкөй маек.",
+    helpLineImage: "🎨 Сүрөт — сүрөттөмөңүз боюнча сүрөт түзөт.",
+    helpLineVideo: "🎬 Видео — сүрөттөмөдөн кыска видео түзөт.",
+    helpLineMusic: "🎵 Музыка — сүрөттөмөдөн музыка түзөт.",
+    helpLineVoice: "🔊 Үн — текстиңизди үнгө айландырат.",
+    helpLineStyles: "🖼 Даяр стилдер — сүрөтүңүзгө даяр стилди колдонот.",
+    helpNote: "Ар бир аракет балансыңыздан монета алат — баалар төмөндөгү баланс чибинде көрсөтүлөт.",
+    formatLabel: "Формат",
+    modelLabel: "Модель",
+    videoModelWan: "🟢 Wan (арзан)",
+    videoModelKling: "🔵 Kling (сапаттуу)",
+    modeText: "💬 Текст",
+    modeImage: "🎨 Сүрөт",
+    modeVideo: "🎬 Видео",
+    modeMusic: "🎵 Музыка",
+    modeVoice: "🔊 Үн",
+    placeholderText: "Билдирүү жазыңыз…",
+    placeholderImage: "Кандай сүрөт тартайын? Мисалы: жалгыз карагай, кар баскан тоо…",
+    placeholderVideo: "Видео үчүн сүрөттөмө жазыңыз…",
+    placeholderMusic: "Кандай музыка түзөлү?",
+    placeholderVoice: "Үнгө айландыруу үчүн текст жазыңыз…",
+    pendingText: "Жазууда…",
+    pendingImage: "Сүрөт түзүлүүдө…",
+    pendingVideo: "Видео түзүлүүдө (бир аз көбүрөөк убакыт алат)…",
+    pendingMusic: "Музыка түзүлүүдө…",
+    pendingVoice: "Үн түзүлүүдө…",
+    pendingStyle: "Стил колдонулууда…",
+    coinUnit: "монета",
+    newChatStartedMessage: "Жаңы маек башталды! 👋 Эмне жөнүндө сүйлөшөбүз?",
+    genericError: "Ката",
+    speechLang: "ky-KG",
+  },
+  en: {
+    newChat: "New chat",
+    navChat: "Chat",
+    navGallery: "Ready styles",
+    navHelp: "Help",
+    titleChat: "Chat",
+    titleGallery: "Ready styles",
+    titleHelp: "Help",
+    welcomeMessage: "Hi! 👋 I'm MUBORAKXON. Pick one of the modes below and write to me — I'll generate text, an image, a video, music, or voice.",
+    galleryLead: "Pick your photo, tap a style — we'll handle the rest.",
+    helpTitle: "How it works",
+    helpLineText: "💬 Text — a normal chat with MUBORAKXON.",
+    helpLineImage: "🎨 Image — generates a picture from your description.",
+    helpLineVideo: "🎬 Video — generates a short video from a description.",
+    helpLineMusic: "🎵 Music — generates music from a description.",
+    helpLineVoice: "🔊 Voice — converts your text into speech.",
+    helpLineStyles: "🖼 Ready styles — applies a ready-made style to your photo.",
+    helpNote: "Every action deducts coins from your balance — check prices in the balance chip below.",
+    formatLabel: "Format",
+    modelLabel: "Model",
+    videoModelWan: "🟢 Wan (cheaper)",
+    videoModelKling: "🔵 Kling (higher quality)",
+    modeText: "💬 Text",
+    modeImage: "🎨 Image",
+    modeVideo: "🎬 Video",
+    modeMusic: "🎵 Music",
+    modeVoice: "🔊 Voice",
+    placeholderText: "Type a message…",
+    placeholderImage: "What should I draw? E.g.: a lone pine tree, a snowy mountain…",
+    placeholderVideo: "Describe the video…",
+    placeholderMusic: "What kind of music should we make?",
+    placeholderVoice: "Type the text to convert to speech…",
+    pendingText: "Typing…",
+    pendingImage: "Generating image…",
+    pendingVideo: "Generating video (this takes a bit longer)…",
+    pendingMusic: "Generating music…",
+    pendingVoice: "Generating voice…",
+    pendingStyle: "Applying style…",
+    coinUnit: "coins",
+    newChatStartedMessage: "New conversation started! 👋 What shall we talk about?",
+    genericError: "Error",
+    speechLang: "en-US",
+  },
+};
+
+let currentLang = "uz";
+
+function tr(key) {
+  const dict = MINIAPP_I18N[currentLang] || MINIAPP_I18N.uz;
+  return dict[key] !== undefined ? dict[key] : MINIAPP_I18N.uz[key];
+}
+
 // ============ DOM ============
 
 const sidebar = document.getElementById("sidebar");
@@ -41,6 +314,31 @@ const balanceValueTop = document.getElementById("balanceValueTop");
 const stylesGrid = document.getElementById("stylesGrid");
 const photoInput = document.getElementById("photoInput");
 
+const newChatLabel = document.getElementById("newChatLabel");
+const navChatLabel = document.getElementById("navChatLabel");
+const navGalleryLabel = document.getElementById("navGalleryLabel");
+const navHelpLabel = document.getElementById("navHelpLabel");
+const welcomeBubbleText = document.getElementById("welcomeBubbleText");
+const galleryLead = document.getElementById("galleryLead");
+const helpTitle = document.getElementById("helpTitle");
+const helpLineText = document.getElementById("helpLineText");
+const helpLineImage = document.getElementById("helpLineImage");
+const helpLineVideo = document.getElementById("helpLineVideo");
+const helpLineMusic = document.getElementById("helpLineMusic");
+const helpLineVoice = document.getElementById("helpLineVoice");
+const helpLineStyles = document.getElementById("helpLineStyles");
+const helpNote = document.getElementById("helpNote");
+const formatLabel = document.getElementById("formatLabel");
+const modelLabel = document.getElementById("modelLabel");
+const videoModelWanBtn = document.getElementById("videoModelWanBtn");
+const videoModelKlingBtn = document.getElementById("videoModelKlingBtn");
+const modeTextBtn = document.getElementById("modeTextBtn");
+const modeImageBtn = document.getElementById("modeImageBtn");
+const modeVideoBtn = document.getElementById("modeVideoBtn");
+const modeMusicBtn = document.getElementById("modeMusicBtn");
+const modeVoiceBtn = document.getElementById("modeVoiceBtn");
+const coinUnitLabel = document.getElementById("coinUnitLabel");
+
 // ============ STATE ============
 
 let currentMode = "text";
@@ -48,6 +346,65 @@ let currentAspect = "1:1";
 let currentVideoModel = "wan";
 let selectedStyleId = null;
 let selectedStyleLabel = "";
+
+// ============ TARJIMALARNI QO'LLASH ============
+
+function setHelpLine(el, text) {
+  if (!el) return;
+  const idx = text.indexOf(" — ");
+  if (idx === -1) {
+    el.textContent = text;
+    return;
+  }
+  const label = text.slice(0, idx);
+  const rest = text.slice(idx);
+  el.innerHTML = `<strong>${label}</strong>${rest}`;
+}
+
+function applyTranslations() {
+  if (newChatLabel) newChatLabel.textContent = tr("newChat");
+  if (navChatLabel) navChatLabel.textContent = tr("navChat");
+  if (navGalleryLabel) navGalleryLabel.textContent = tr("navGallery");
+  if (navHelpLabel) navHelpLabel.textContent = tr("navHelp");
+
+  if (welcomeBubbleText) welcomeBubbleText.textContent = tr("welcomeMessage");
+  if (galleryLead) galleryLead.textContent = tr("galleryLead");
+
+  if (helpTitle) helpTitle.textContent = tr("helpTitle");
+  setHelpLine(helpLineText, tr("helpLineText"));
+  setHelpLine(helpLineImage, tr("helpLineImage"));
+  setHelpLine(helpLineVideo, tr("helpLineVideo"));
+  setHelpLine(helpLineMusic, tr("helpLineMusic"));
+  setHelpLine(helpLineVoice, tr("helpLineVoice"));
+  setHelpLine(helpLineStyles, tr("helpLineStyles"));
+  if (helpNote) helpNote.textContent = tr("helpNote");
+
+  if (formatLabel) formatLabel.textContent = tr("formatLabel");
+  if (modelLabel) modelLabel.textContent = tr("modelLabel");
+  if (videoModelWanBtn) videoModelWanBtn.textContent = tr("videoModelWan");
+  if (videoModelKlingBtn) videoModelKlingBtn.textContent = tr("videoModelKling");
+
+  if (modeTextBtn) modeTextBtn.textContent = tr("modeText");
+  if (modeImageBtn) modeImageBtn.textContent = tr("modeImage");
+  if (modeVideoBtn) modeVideoBtn.textContent = tr("modeVideo");
+  if (modeMusicBtn) modeMusicBtn.textContent = tr("modeMusic");
+  if (modeVoiceBtn) modeVoiceBtn.textContent = tr("modeVoice");
+
+  if (coinUnitLabel) coinUnitLabel.textContent = tr("coinUnit");
+
+  TITLES.chat = tr("titleChat");
+  TITLES.gallery = tr("titleGallery");
+  TITLES.help = tr("titleHelp");
+  topbarTitle.textContent = TITLES[
+    Object.keys(views).find((key) => views[key].classList.contains("active")) || "chat"
+  ];
+
+  if (recognition) {
+    recognition.lang = tr("speechLang");
+  }
+
+  setMode(currentMode);
+}
 
 const TITLES = {
   chat: "Suhbat",
@@ -93,6 +450,17 @@ navItems.forEach((btn) => {
 
 // ============ MODE SWITCHING ============
 
+function placeholderFor(mode) {
+  const map = {
+    text: tr("placeholderText"),
+    image: tr("placeholderImage"),
+    video: tr("placeholderVideo"),
+    music: tr("placeholderMusic"),
+    voice: tr("placeholderVoice"),
+  };
+  return map[mode] || tr("placeholderText");
+}
+
 function setMode(mode) {
   currentMode = mode;
 
@@ -103,15 +471,7 @@ function setMode(mode) {
   imageSettingsRow.classList.toggle("hidden", mode !== "image");
   videoModelRow.classList.toggle("hidden", mode !== "video");
 
-  const placeholders = {
-    text: "Xabar yozing…",
-    image: "Qanday rasm chizay? Masalan: yolg'iz archa, qor bosgan tog'…",
-    video: "Video uchun tavsif yozing…",
-    music: "Qanday musiqa yarataylik?",
-    voice: "Ovozga aylantirish uchun matn yozing…",
-  };
-
-  messageInput.placeholder = placeholders[mode] || "Xabar yozing…";
+  messageInput.placeholder = placeholderFor(mode);
 }
 
 modeRow.addEventListener("click", (e) => {
@@ -192,7 +552,7 @@ function resolvePendingAsAudio(wrapEl, url) {
 function resolvePendingAsError(wrapEl, message) {
   wrapEl.querySelector(".bubble").outerHTML =
     `<div class="bubble error-bubble"></div>`;
-  wrapEl.querySelector(".bubble").textContent = "⚠️ " + message;
+  wrapEl.querySelector(".bubble").textContent = "⚠️ " + (message || tr("genericError"));
   scrollToBottom();
 }
 
@@ -215,59 +575,59 @@ async function handleSend() {
 
   try {
     if (currentMode === "text") {
-      const pending = appendPendingBubble("Yozmoqda…");
+      const pending = appendPendingBubble(tr("pendingText"));
       const form = new FormData();
       form.append("init_data", initData);
       form.append("message", text);
       const resp = await fetch("/api/chat", { method: "POST", body: form });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || "Xatolik");
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       resolvePendingAsText(pending, data.reply);
       updateBalance(data.balance);
 
     } else if (currentMode === "image") {
-      const pending = appendPendingBubble("Rasm yaratilmoqda…");
+      const pending = appendPendingBubble(tr("pendingImage"));
       const form = new FormData();
       form.append("init_data", initData);
       form.append("prompt", text);
       form.append("aspect_ratio", currentAspect);
       const resp = await fetch("/api/generate-image", { method: "POST", body: form });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || "Xatolik");
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       resolvePendingAsImage(pending, data.image_url);
       updateBalance(data.balance);
 
     } else if (currentMode === "video") {
-      const pending = appendPendingBubble("Video yaratilmoqda (biroz uzoqroq davom etadi)…");
+      const pending = appendPendingBubble(tr("pendingVideo"));
       const form = new FormData();
       form.append("init_data", initData);
       form.append("prompt", text);
       form.append("model_key", currentVideoModel);
       const resp = await fetch("/api/generate-video", { method: "POST", body: form });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || "Xatolik");
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       resolvePendingAsVideo(pending, data.video_url);
       updateBalance(data.balance);
 
     } else if (currentMode === "music") {
-      const pending = appendPendingBubble("Musiqa yaratilmoqda…");
+      const pending = appendPendingBubble(tr("pendingMusic"));
       const form = new FormData();
       form.append("init_data", initData);
       form.append("prompt", text);
       const resp = await fetch("/api/generate-music", { method: "POST", body: form });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || "Xatolik");
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       resolvePendingAsAudio(pending, data.audio_url);
       updateBalance(data.balance);
 
     } else if (currentMode === "voice") {
-      const pending = appendPendingBubble("Ovoz yaratilmoqda…");
+      const pending = appendPendingBubble(tr("pendingVoice"));
       const form = new FormData();
       form.append("init_data", initData);
       form.append("text", text);
       const resp = await fetch("/api/generate-voice", { method: "POST", body: form });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || "Xatolik");
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       const audioUrl = "data:audio/mpeg;base64," + data.audio_base64;
       resolvePendingAsAudio(pending, audioUrl);
       updateBalance(data.balance);
@@ -314,7 +674,7 @@ newChatBtn.addEventListener("click", async () => {
 
   messagesEl.innerHTML = `
     <div class="msg msg-bot">
-      <div class="bubble">Yangi suhbat boshlandi! 👋 Nima haqida gaplashamiz?</div>
+      <div class="bubble">${tr("newChatStartedMessage")}</div>
     </div>
   `;
   switchView("chat");
@@ -325,11 +685,13 @@ newChatBtn.addEventListener("click", async () => {
 const SpeechRecognitionCtor =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
+let recognition = null;
+
 if (SpeechRecognitionCtor) {
   micBtn.classList.remove("hidden");
 
-  const recognition = new SpeechRecognitionCtor();
-  recognition.lang = "uz-UZ";
+  recognition = new SpeechRecognitionCtor();
+  recognition.lang = tr("speechLang");
   recognition.interimResults = false;
 
   let isRecording = false;
@@ -368,7 +730,7 @@ if (SpeechRecognitionCtor) {
 
 async function loadStyles() {
   try {
-    const resp = await fetch("/api/styles");
+    const resp = await fetch("/api/styles?lang=" + encodeURIComponent(currentLang));
     const styles = await resp.json();
 
     stylesGrid.innerHTML = "";
@@ -406,7 +768,7 @@ photoInput.addEventListener("change", async () => {
 
   switchView("chat");
   appendUserBubble(`🖼 ${selectedStyleLabel}`);
-  const pending = appendPendingBubble("Stil qo'llanmoqda…");
+  const pending = appendPendingBubble(tr("pendingStyle"));
 
   try {
     const form = new FormData();
@@ -416,7 +778,7 @@ photoInput.addEventListener("change", async () => {
 
     const resp = await fetch("/api/apply-style", { method: "POST", body: form });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || "Xatolik");
+    if (!resp.ok) throw new Error(data.detail || tr("genericError"));
 
     resolvePendingAsImage(pending, data.result_url);
     updateBalance(data.balance);
@@ -429,6 +791,19 @@ photoInput.addEventListener("change", async () => {
 });
 
 // ============ BOSHLANG'ICH YUKLASH ============
+
+async function loadLang() {
+  if (!initData) return "uz";
+
+  try {
+    const resp = await fetch("/api/lang?init_data=" + encodeURIComponent(initData));
+    if (!resp.ok) throw new Error("lang so'rovi muvaffaqiyatsiz");
+    const data = await resp.json();
+    return data.lang && MINIAPP_I18N[data.lang] ? data.lang : "uz";
+  } catch (e) {
+    return "uz";
+  }
+}
 
 async function loadBalance() {
   if (!initData) {
@@ -446,5 +821,11 @@ async function loadBalance() {
   }
 }
 
-loadStyles();
-loadBalance();
+async function init() {
+  currentLang = await loadLang();
+  applyTranslations();
+
+  await Promise.all([loadStyles(), loadBalance()]);
+}
+
+init();
