@@ -22,25 +22,25 @@
     </div>
 
     <button class="sidebar-newchat" id="newChatBtn">
-      <span>➕</span> Yangi suhbat
+      <span>➕</span> <span id="newChatLabel">Yangi suhbat</span>
     </button>
 
     <nav class="sidebar-nav">
       <button class="nav-item active" data-view="chat">
-        <span class="nav-icon">💬</span> Suhbat
+        <span class="nav-icon">💬</span> <span id="navChatLabel">Suhbat</span>
       </button>
       <button class="nav-item" data-view="gallery">
-        <span class="nav-icon">🖼</span> Tayyor stillar
+        <span class="nav-icon">🖼</span> <span id="navGalleryLabel">Tayyor stillar</span>
       </button>
       <button class="nav-item" data-view="help">
-        <span class="nav-icon">❓</span> Yordam
+        <span class="nav-icon">❓</span> <span id="navHelpLabel">Yordam</span>
       </button>
     </nav>
 
     <div class="sidebar-footer">
       <div class="balance-chip" id="balanceChip">
         <span class="coin-dot"></span>
-        <span id="balanceValue">—</span> coin
+        <span id="balanceValue">—</span> <span id="coinUnitLabel">coin</span>
       </div>
     </div>
   </aside>
@@ -61,7 +61,7 @@
   <main class="view active" id="chatView">
     <div class="messages" id="messages">
       <div class="msg msg-bot">
-        <div class="bubble">
+        <div class="bubble" id="welcomeBubbleText">
           Salom! 👋 Men MUBORAKXON. Pastdagi rejimlardan birini tanlang
           va menga yozing — matn, rasm, video, musiqa yoki ovoz yarataman.
         </div>
@@ -71,21 +71,21 @@
 
   <!-- ============ GALEREYA (Tayyor stillar) ============ -->
   <main class="view" id="galleryView">
-    <p class="screen-lead">Rasmingizni tanlang, stilni bosing — qolganini biz qilamiz.</p>
+    <p class="screen-lead" id="galleryLead">Rasmingizni tanlang, stilni bosing — qolganini biz qilamiz.</p>
     <div class="grid" id="stylesGrid"></div>
   </main>
 
   <!-- ============ YORDAM ============ -->
   <main class="view" id="helpView">
     <div class="help-card">
-      <h2>Qanday ishlaydi</h2>
-      <p><strong>💬 Matn</strong> — MUBORAKXON bilan oddiy suhbat.</p>
-      <p><strong>🎨 Rasm</strong> — yozgan tavsifingiz asosida rasm yaratadi.</p>
-      <p><strong>🎬 Video</strong> — tavsifdan qisqa video yaratadi.</p>
-      <p><strong>🎵 Musiqa</strong> — tavsifdan musiqa yaratadi.</p>
-      <p><strong>🔊 Ovoz</strong> — matningizni ovozga aylantiradi.</p>
-      <p><strong>🖼 Tayyor stillar</strong> — o'z rasmingizga tayyor stil qo'llaydi.</p>
-      <p class="help-muted">Har bir amal balansingizdan coin yechadi — narxlarni pastdagi balans chipida ko'rasiz.</p>
+      <h2 id="helpTitle">Qanday ishlaydi</h2>
+      <p id="helpLineText"><strong>💬 Matn</strong> — MUBORAKXON bilan oddiy suhbat.</p>
+      <p id="helpLineImage"><strong>🎨 Rasm</strong> — yozgan tavsifingiz asosida rasm yaratadi.</p>
+      <p id="helpLineVideo"><strong>🎬 Video</strong> — tavsifdan qisqa video yaratadi.</p>
+      <p id="helpLineMusic"><strong>🎵 Musiqa</strong> — tavsifdan musiqa yaratadi.</p>
+      <p id="helpLineVoice"><strong>🔊 Ovoz</strong> — matningizni ovozga aylantiradi.</p>
+      <p id="helpLineStyles"><strong>🖼 Tayyor stillar</strong> — o'z rasmingizga tayyor stil qo'llaydi.</p>
+      <p class="help-muted" id="helpNote">Har bir amal balansingizdan coin yechadi — narxlarni pastdagi balans chipida ko'rasiz.</p>
     </div>
   </main>
 
@@ -93,7 +93,7 @@
   <footer class="composer" id="composer">
 
     <div class="settings-row hidden" id="imageSettingsRow">
-      <div class="settings-label">Format</div>
+      <div class="settings-label" id="formatLabel">Format</div>
       <div class="chip-scroll" id="aspectRatioRow">
         <button class="mini-chip active" data-aspect="1:1">1:1</button>
         <button class="mini-chip" data-aspect="9:16">9:16</button>
@@ -104,19 +104,19 @@
     </div>
 
     <div class="settings-row hidden" id="videoModelRow">
-      <div class="settings-label">Model</div>
+      <div class="settings-label" id="modelLabel">Model</div>
       <div class="chip-scroll">
-        <button class="mini-chip active" data-video-model="wan">🟢 Wan (arzon)</button>
-        <button class="mini-chip" data-video-model="kling">🔵 Kling (sifatli)</button>
+        <button class="mini-chip active" data-video-model="wan" id="videoModelWanBtn">🟢 Wan (arzon)</button>
+        <button class="mini-chip" data-video-model="kling" id="videoModelKlingBtn">🔵 Kling (sifatli)</button>
       </div>
     </div>
 
     <div class="mode-row" id="modeRow">
-      <button class="mode-chip active" data-mode="text">💬 Matn</button>
-      <button class="mode-chip" data-mode="image">🎨 Rasm</button>
-      <button class="mode-chip" data-mode="video">🎬 Video</button>
-      <button class="mode-chip" data-mode="music">🎵 Musiqa</button>
-      <button class="mode-chip" data-mode="voice">🔊 Ovoz</button>
+      <button class="mode-chip active" data-mode="text" id="modeTextBtn">💬 Matn</button>
+      <button class="mode-chip" data-mode="image" id="modeImageBtn">🎨 Rasm</button>
+      <button class="mode-chip" data-mode="video" id="modeVideoBtn">🎬 Video</button>
+      <button class="mode-chip" data-mode="music" id="modeMusicBtn">🎵 Musiqa</button>
+      <button class="mode-chip" data-mode="voice" id="modeVoiceBtn">🔊 Ovoz</button>
     </div>
 
     <div class="input-row">
