@@ -120,14 +120,6 @@ TEXTS = {
         "ky": "⏳ Сиз бүгүнкү бонусту алгансыз. Эртең кайра аракет кылыңыз!",
         "en": "⏳ You've already claimed today's bonus. Try again tomorrow!",
     },
-    "insufficient_coins": {
-        "uz": "❌ Coin yetarli emas. Kerak: {cost}, sizda: {balance}.",
-        "ru": "❌ Недостаточно монет. Нужно: {cost}, у вас: {balance}.",
-        "kk": "❌ Тиын жеткіліксіз. Керек: {cost}, сізде: {balance}.",
-        "tg": "❌ Тангаҳо кофӣ нестанд. Лозим: {cost}, шумо доред: {balance}.",
-        "ky": "❌ Монета жетишсиз. Керек: {cost}, сизде: {balance}.",
-        "en": "❌ Not enough coins. Needed: {cost}, you have: {balance}.",
-    },
     "help_text": {
         "uz": "ℹ️ *Yordam*\n\n🆕 Yangi chat — suhbat tarixini tozalaydi\n"
               "🖼 Tayyor stillar — tayyor uslublardan birini tanlab, rasmingizni shu uslubda qayta ishlaydi (10 coin)\n"
@@ -458,6 +450,42 @@ TEXTS = {
               "🆔 Your ID: `{user_id}`\n\n"
               "Once payment is confirmed, coins will be added to your balance.",
     },
+
+    # ------------------------------------------------------------
+    # MINI APP UCHUN QO'SHIMCHA XATOLIK MATNLARI
+    # ------------------------------------------------------------
+    "unknown_style": {
+        "uz": "❌ Noma'lum stil.",
+        "ru": "❌ Неизвестный стиль.",
+        "kk": "❌ Белгісіз стиль.",
+        "tg": "❌ Услуби номаълум.",
+        "ky": "❌ Белгисиз стил.",
+        "en": "❌ Unknown style.",
+    },
+    "photo_missing": {
+        "uz": "❌ Rasm yuborilmadi.",
+        "ru": "❌ Фото не отправлено.",
+        "kk": "❌ Сурет жіберілмеді.",
+        "tg": "❌ Расм фиристода нашуд.",
+        "ky": "❌ Сүрөт жөнөтүлгөн жок.",
+        "en": "❌ No photo was sent.",
+    },
+    "no_result": {
+        "uz": "Natija olinmadi, qayta urinib ko'ring.",
+        "ru": "Результат не получен, попробуйте снова.",
+        "kk": "Нәтиже алынбады, қайта көріңіз.",
+        "tg": "Натиҷа гирифта нашуд, бозоӣ кунед.",
+        "ky": "Натыйжа алынган жок, кайра аракет кылыңыз.",
+        "en": "No result was returned, please try again.",
+    },
+    "unknown_video_model": {
+        "uz": "❌ Noma'lum video model.",
+        "ru": "❌ Неизвестная модель видео.",
+        "kk": "❌ Белгісіз бейне моделі.",
+        "tg": "❌ Модели видео номаълум.",
+        "ky": "❌ Белгисиз видео модели.",
+        "en": "❌ Unknown video model.",
+    },
 }
 
 
@@ -468,3 +496,100 @@ def t(lang: str, key: str, **kwargs) -> str:
     if kwargs:
         return template.format(**kwargs)
     return template
+
+
+# ============================================================
+# TAYYOR STILLAR NOMLARI (STYLE_TEMPLATES bilan bog'liq)
+# ============================================================
+#
+# MUHIM: bot.py'dagi STYLE_TEMPLATES faqat o'zbekcha "label"
+# saqlaydi (Higgsfield/fal.ai promptlari esa har doim ingliz
+# tilida qoladi — bu ularning ishlashiga umuman aloqasi yo'q).
+# Foydalanuvchiga ko'rinadigan STIL NOMINI boshqa tillarda ham
+# ko'rsatish uchun shu lug'at ishlatiladi — Telegram bot ham,
+# Mini App ham shu yerdan foydalanadi.
+
+STYLE_LABELS = {
+    "bw_portrait": {
+        "uz": "🖤 Qora-oq portret",
+        "ru": "🖤 Чёрно-белый портрет",
+        "kk": "🖤 Ақ-қара портрет",
+        "tg": "🖤 Портрети сиёҳу сафед",
+        "ky": "🖤 Ак-кара портрет",
+        "en": "🖤 Black & white portrait",
+    },
+    "cinematic_car": {
+        "uz": "🚗 Kinematik avtomobil",
+        "ru": "🚗 Кинематографичный автомобиль",
+        "kk": "🚗 Кинематикалық автокөлік",
+        "tg": "🚗 Автомобили синамоӣ",
+        "ky": "🚗 Кинематикалык автомобиль",
+        "en": "🚗 Cinematic car",
+    },
+    "vintage_sketch": {
+        "uz": "✏️ Vintage eskiz",
+        "ru": "✏️ Винтажный эскиз",
+        "kk": "✏️ Винтаж эскиз",
+        "tg": "✏️ Эскизи винтажӣ",
+        "ky": "✏️ Винтаж эскиз",
+        "en": "✏️ Vintage sketch",
+    },
+    "golden_hour": {
+        "uz": "🌅 Oltin soat portreti",
+        "ru": "🌅 Портрет в золотой час",
+        "kk": "🌅 Алтын сағат портреті",
+        "tg": "🌅 Портрети соати тиллоӣ",
+        "ky": "🌅 Алтын саат портрети",
+        "en": "🌅 Golden hour portrait",
+    },
+    "figurine": {
+        "uz": "🧸 Miniatura figurka",
+        "ru": "🧸 Миниатюрная фигурка",
+        "kk": "🧸 Миниатюра мүсінше",
+        "tg": "🧸 Муҷассамаи миниатюрӣ",
+        "ky": "🧸 Миниатюра айкел",
+        "en": "🧸 Miniature figurine",
+    },
+    "fantasy_armor": {
+        "uz": "⚔️ Fentezi zirh",
+        "ru": "⚔️ Фэнтезийные доспехи",
+        "kk": "⚔️ Фэнтези сауыты",
+        "tg": "⚔️ Зиреҳи фэнтезӣ",
+        "ky": "⚔️ Фэнтези курал-жарак",
+        "en": "⚔️ Fantasy armor",
+    },
+    "mini_statue_desk": {
+        "uz": "🏆 Mini haykalcha (stolda)",
+        "ru": "🏆 Мини-статуэтка (на столе)",
+        "kk": "🏆 Мини мүсінше (үстелде)",
+        "tg": "🏆 Ҳайкалчаи хурд (дар миз)",
+        "ky": "🏆 Мини айкел (столдо)",
+        "en": "🏆 Mini statue (on desk)",
+    },
+    "ink_portrait_color": {
+        "uz": "🖊 Rangli siyoh portret",
+        "ru": "🖊 Цветной чернильный портрет",
+        "kk": "🖊 Түрлі-түсті сия портрет",
+        "tg": "🖊 Портрети сиёҳии рангин",
+        "ky": "🖊 Түстүү сыя портрет",
+        "en": "🖊 Colored ink portrait",
+    },
+    "clone_multiply": {
+        "uz": "👥 Klon effekti",
+        "ru": "👥 Эффект клона",
+        "kk": "👥 Клон эффекті",
+        "tg": "👥 Эффекти клон",
+        "ky": "👥 Клон эффекти",
+        "en": "👥 Clone effect",
+    },
+}
+
+
+def style_label(style_id: str, lang: str) -> str:
+    """Berilgan stil ID'si uchun berilgan tildagi nomini qaytaradi."""
+    labels = STYLE_LABELS.get(style_id, {})
+    return (
+        labels.get(lang)
+        or labels.get(DEFAULT_LANGUAGE)
+        or style_id
+    )
