@@ -67,6 +67,7 @@ from bot import (
     get_balance,
     get_lang,
 )
+from i18n import DEFAULT_LANGUAGE, style_label, t
 
 # Mini App'da til nomlarini Claude'ga aytish uchun (bot.py'dagi
 # handle_message ichidagi xuddi shu lug'at bilan bir xil).
@@ -266,14 +267,16 @@ async def api_new_chat(
 
 
 @api.get("/api/styles")
-async def api_list_styles():
+async def api_list_styles(
+    lang: str = DEFAULT_LANGUAGE,
+):
 
     return [
         {
             "id": key,
-            "label": info["label"],
+            "label": style_label(key, lang),
         }
-        for key, info in STYLE_TEMPLATES.items()
+        for key in STYLE_TEMPLATES.keys()
     ]
 
 
@@ -291,6 +294,20 @@ async def api_get_balance(init_data: str):
     }
 
 
+@api.get("/api/lang")
+async def api_get_lang(init_data: str):
+
+    user = verify_telegram_init_data(
+        init_data
+    )
+
+    chat_id = user["id"]
+
+    return {
+        "lang": get_lang(chat_id)
+    }
+
+
 @api.post("/api/apply-style")
 async def api_apply_style(
     init_data: str = Form(...),
@@ -304,25 +321,29 @@ async def api_apply_style(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if style_id not in STYLE_TEMPLATES:
         raise HTTPException(
             status_code=400,
-            detail="Noma'lum stil",
+            detail=t(lang, "unknown_style"),
         )
 
     if get_balance(chat_id) < COIN_COST_STYLE:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_STYLE})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_STYLE,
+                balance=get_balance(chat_id),
             ),
         )
 
     if photo is None:
         raise HTTPException(
             status_code=400,
-            detail="Rasm yuborilmadi",
+            detail=t(lang, "photo_missing"),
         )
 
     image_bytes = await photo.read()
@@ -356,15 +377,13 @@ async def api_apply_style(
 
         raise HTTPException(
             status_code=500,
-            detail="Stil qo'llashda xatolik "
-            "yuz berdi, qayta urinib ko'ring",
+            detail=t(lang, "style_error"),
         )
 
     if not result_url:
         raise HTTPException(
             status_code=500,
-            detail="Natija olinmadi, "
-            "qayta urinib ko'ring",
+            detail=t(lang, "no_result"),
         )
 
     new_balance = change_balance(
@@ -382,7 +401,7 @@ async def api_apply_style(
                 chat_id=chat_id,
                 photo=result_url,
                 caption=(
-                    f"🖼 {STYLE_TEMPLATES[style_id]['label']}\n\n"
+                    f"🖼 {style_label(style_id, lang)}\n\n"
                     f"🪙 -{COIN_COST_STYLE} coin "
                     f"({new_balance})"
                 ),
@@ -416,16 +435,18 @@ async def api_chat(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if get_balance(chat_id) < COIN_COST_TEXT:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_TEXT})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_TEXT,
+                balance=get_balance(chat_id),
             ),
         )
-
-    lang = get_lang(chat_id)
 
     history = conversation_history.get(
         chat_id,
@@ -484,8 +505,7 @@ async def api_chat(
 
         raise HTTPException(
             status_code=500,
-            detail="Claude bilan bog'lanishda "
-            "xatolik",
+            detail=t(lang, "text_error"),
         )
 
     history.append(
@@ -521,12 +541,16 @@ async def api_generate_image(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if get_balance(chat_id) < COIN_COST_IMAGE:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_IMAGE})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_IMAGE,
+                balance=get_balance(chat_id),
             ),
         )
 
@@ -549,14 +573,13 @@ async def api_generate_image(
 
         raise HTTPException(
             status_code=500,
-            detail="Rasm yaratishda xatolik",
+            detail=t(lang, "image_error"),
         )
 
     if not image_url:
         raise HTTPException(
             status_code=500,
-            detail="Rasm yaratilmadi, "
-            "qayta urinib ko'ring",
+            detail=t(lang, "no_result"),
         )
 
     new_balance = change_balance(
@@ -583,18 +606,22 @@ async def api_generate_video(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if model_key not in VIDEO_MODELS:
         raise HTTPException(
             status_code=400,
-            detail="Noma'lum video model",
+            detail=t(lang, "unknown_video_model"),
         )
 
     if get_balance(chat_id) < COIN_COST_VIDEO:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_VIDEO})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_VIDEO,
+                balance=get_balance(chat_id),
             ),
         )
 
@@ -621,14 +648,13 @@ async def api_generate_video(
 
         raise HTTPException(
             status_code=500,
-            detail="Video yaratishda xatolik",
+            detail=t(lang, "video_error"),
         )
 
     if not video_url:
         raise HTTPException(
             status_code=500,
-            detail="Video yaratilmadi, "
-            "qayta urinib ko'ring",
+            detail=t(lang, "no_result"),
         )
 
     new_balance = change_balance(
@@ -654,12 +680,16 @@ async def api_generate_music(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if get_balance(chat_id) < COIN_COST_MUSIC:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_MUSIC})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_MUSIC,
+                balance=get_balance(chat_id),
             ),
         )
 
@@ -681,14 +711,13 @@ async def api_generate_music(
 
         raise HTTPException(
             status_code=500,
-            detail="Musiqa yaratishda xatolik",
+            detail=t(lang, "music_error"),
         )
 
     if not audio_url:
         raise HTTPException(
             status_code=500,
-            detail="Musiqa yaratilmadi, "
-            "qayta urinib ko'ring",
+            detail=t(lang, "no_result"),
         )
 
     new_balance = change_balance(
@@ -714,16 +743,18 @@ async def api_generate_voice(
 
     chat_id = user["id"]
 
+    lang = get_lang(chat_id)
+
     if get_balance(chat_id) < COIN_COST_VOICE:
         raise HTTPException(
             status_code=402,
-            detail=(
-                "Coin yetarli emas "
-                f"(kerak: {COIN_COST_VOICE})"
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_VOICE,
+                balance=get_balance(chat_id),
             ),
         )
-
-    lang = get_lang(chat_id)
 
     selected_voice = TTS_VOICE_MAP.get(
         lang,
@@ -766,7 +797,7 @@ async def api_generate_voice(
 
         raise HTTPException(
             status_code=500,
-            detail="Ovoz yaratishda xatolik",
+            detail=t(lang, "voice_error"),
         )
 
     finally:
@@ -780,7 +811,7 @@ async def api_generate_voice(
     if not audio_bytes:
         raise HTTPException(
             status_code=500,
-            detail="Ovoz yaratilmadi",
+            detail=t(lang, "no_result"),
         )
 
     new_balance = change_balance(
@@ -917,4 +948,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-                             )
+    )
