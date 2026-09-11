@@ -327,13 +327,21 @@ async def notify_admin_error(
 
     try:
 
+        # MUHIM TUZATISH: avval parse_mode="Markdown" bilan
+        # yuborilardi — lekin traceback matnida pastki chiziq
+        # (_), yulduzcha (*) kabi belgilar juda ko'p uchraydi
+        # (masalan "_update_fetcher"), bular Telegram'ning
+        # Markdown parserini buzib, xabarni butunlay yuborilmay
+        # qoldirar edi (aynan shu turdagi xato ilgari
+        # show_buy_coins funksiyasida ham uchragan edi).
+        # Oddiy matn (parse_mode'siz) esa har doim yetib boradi.
+
         await context.bot.send_message(
             chat_id=int(ADMIN_ID),
             text=(
                 f"🔴 XATOLIK: {title}\n\n"
-                f"```\n{tb_text}\n```"
+                f"{tb_text}"
             ),
-            parse_mode="Markdown",
         )
 
     except Exception as notify_exc:
