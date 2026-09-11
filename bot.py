@@ -41,7 +41,7 @@ import httpx
 import fal_client
 import edge_tts
 
-from i18n import t, LANGUAGES, DEFAULT_LANGUAGE
+from i18n import t, LANGUAGES, DEFAULT_LANGUAGE, style_label
 
 from telegram import (
     Update,
@@ -681,9 +681,14 @@ def video_model_keyboard(
 # TAYYOR STILLAR
 # ============================================================
 
+# MUHIM: stil NOMLARI (6 tilga tarjima qilingan, emoji bilan)
+# endi i18n.py'dagi STYLE_LABELS lug'atida saqlanadi — shu
+# yerda esa faqat rasm generatsiyasi uchun ingliz tilidagi
+# "prompt" qoladi. Nom kerak bo'lganda style_label(key, lang)
+# funksiyasi (i18n.py'dan import qilingan) ishlatiladi. Bitta
+# manba — Mini App va Telegram bot doim bir xil nom ko'rsatadi.
 STYLE_TEMPLATES = {
     "bw_portrait": {
-        "label": "🖤 Qora-oq portret",
         "prompt": (
             "Transform the provided photo into a "
             "dramatic black and white portrait, "
@@ -695,7 +700,6 @@ STYLE_TEMPLATES = {
     },
 
     "cinematic_car": {
-        "label": "🚗 Kinematik avtomobil",
         "prompt": (
             "Transform the provided photo into "
             "cinematic automotive photography, "
@@ -707,7 +711,6 @@ STYLE_TEMPLATES = {
     },
 
     "vintage_sketch": {
-        "label": "✏️ Vintage eskiz",
         "prompt": (
             "Transform the provided photo into a "
             "detailed vintage pencil sketch, "
@@ -718,7 +721,6 @@ STYLE_TEMPLATES = {
     },
 
     "golden_hour": {
-        "label": "🌅 Oltin soat portreti",
         "prompt": (
             "Transform the provided photo into a "
             "beautiful golden hour portrait, warm "
@@ -729,7 +731,6 @@ STYLE_TEMPLATES = {
     },
 
     "figurine": {
-        "label": "🧸 Miniatura figurka",
         "prompt": (
             "Transform the provided subject into a "
             "hyper-realistic collectible figurine, "
@@ -740,7 +741,6 @@ STYLE_TEMPLATES = {
     },
 
     "fantasy_armor": {
-        "label": "⚔️ Fentezi zirh",
         "prompt": (
             "Transform the provided portrait into an "
             "epic fantasy warrior wearing detailed "
@@ -751,7 +751,6 @@ STYLE_TEMPLATES = {
     },
 
     "mini_statue_desk": {
-        "label": "🏆 Mini haykalcha (stolda)",
         "prompt": (
             "Transform the provided photo into a "
             "professional business portrait of the "
@@ -766,7 +765,6 @@ STYLE_TEMPLATES = {
     },
 
     "ink_portrait_color": {
-        "label": "🖊 Rangli siyoh portret",
         "prompt": (
             "Transform the provided photo into a "
             "detailed colored ink and pencil "
@@ -779,7 +777,6 @@ STYLE_TEMPLATES = {
     },
 
     "clone_multiply": {
-        "label": "👥 Klon effekti",
         "prompt": (
             "Transform the provided photo into a "
             "surreal multiplicity composition showing "
@@ -795,14 +792,16 @@ STYLE_TEMPLATES = {
 }
 
 
-def styles_inline_keyboard():
+def styles_inline_keyboard(
+    lang: str = DEFAULT_LANGUAGE,
+):
     buttons = []
     row = []
 
-    for key, info in STYLE_TEMPLATES.items():
+    for key in STYLE_TEMPLATES.keys():
         row.append(
             InlineKeyboardButton(
-                info["label"],
+                style_label(key, lang),
                 callback_data=f"style:{key}",
             )
         )
@@ -1800,7 +1799,7 @@ async def show_styles_menu(
             lang,
             "choose_style",
         ),
-        reply_markup=styles_inline_keyboard(),
+        reply_markup=styles_inline_keyboard(lang),
     )
 
 
@@ -1829,15 +1828,16 @@ async def style_selected_callback(
         chat_id
     ] = style_key
 
-    style_label = STYLE_TEMPLATES[
-        style_key
-    ]["label"]
+    label_text = style_label(
+        style_key,
+        lang,
+    )
 
     await query.message.reply_text(
         t(
             lang,
             "style_selected",
-            label=style_label,
+            label=label_text,
         )
     )
 
@@ -1940,7 +1940,7 @@ async def process_style_photo(
             photo=result_url,
             caption=(
                 f"🖼 "
-                f"{STYLE_TEMPLATES[style_key]['label']}\n\n"
+                f"{style_label(style_key, lang)}\n\n"
                 f"🪙 -{COIN_COST_STYLE} coin "
                 f"({new_balance})"
             ),
