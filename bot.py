@@ -36,6 +36,7 @@ import json
 import asyncio
 import logging
 import traceback
+import base64
 
 import httpx
 import fal_client
@@ -1181,28 +1182,36 @@ async def apply_fal_ai_style(
     style_prompt: str,
 ) -> str | None:
     """
-    Telegram rasmini fal.ai CDN'iga yuklaydi
-    va FLUX image-to-image orqali stil beradi.
+    Telegram rasmini FLUX image-to-image orqali stil beradi.
 
     Model:
         fal-ai/flux/dev/image-to-image
 
     Parametrlar:
-        image_url (fal CDN'dan olingan manzil)
+        image_url (base64 data URL sifatida — pastga qarang)
         prompt
+
+    MUHIM TUZATISH (topilgan haqiqiy xato): avval rasm
+    fal_client.upload() orqali fal.ai'ning alohida CDN
+    serveriga (fal.media) yuklanardi, lekin Railway'ning bu
+    konteynerida aynan o'sha CDN domenini DNS orqali hal
+    qilib bo'lmadi ("No address associated with hostname" —
+    boshqa fal.ai so'rovlari, masalan oddiy rasm yaratish,
+    muammosiz ishlagani buni tasdiqladi, demak muammo faqat
+    o'sha bitta CDN domenida edi). Shu sabab endi rasm CDN'ga
+    yuklanmaydi — o'rniga to'g'ridan-to'g'ri base64 "data URL"
+    sifatida modelga beriladi, bu esa alohida CDN'ga ulanish
+    zaruratini butunlay yo'qotadi.
     """
 
     def run_generation():
 
-        # MUHIM TUZATISH (topilgan haqiqiy xato): o'rnatilgan
-        # fal_client versiyasida SyncClient.upload() faqat
-        # (data, content_type) ikkita argument qabul qiladi —
-        # uchinchi argument (fayl nomi) berilsa
-        # "takes 3 positional arguments but 4 were given"
-        # xatosini beradi. Fayl nomi bu versiyada shart emas.
-        image_url = fal_client.upload(
-            image_bytes,
-            "image/jpeg",
+        base64_data = base64.b64encode(
+            image_bytes
+        ).decode("ascii")
+
+        image_url = (
+            f"data:image/jpeg;base64,{base64_data}"
         )
 
         result = fal_client.subscribe(
