@@ -1194,12 +1194,15 @@ async def apply_fal_ai_style(
 
     def run_generation():
 
-        # fal_client.upload(data, content_type, file_name=None)
-        # — rasmiy fal.ai hujjatiga muvofiq tartib.
+        # MUHIM TUZATISH (topilgan haqiqiy xato): o'rnatilgan
+        # fal_client versiyasida SyncClient.upload() faqat
+        # (data, content_type) ikkita argument qabul qiladi —
+        # uchinchi argument (fayl nomi) berilsa
+        # "takes 3 positional arguments but 4 were given"
+        # xatosini beradi. Fayl nomi bu versiyada shart emas.
         image_url = fal_client.upload(
             image_bytes,
             "image/jpeg",
-            "image.jpg",
         )
 
         result = fal_client.subscribe(
