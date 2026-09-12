@@ -27,6 +27,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import logging
 import os
 import time
@@ -105,6 +106,15 @@ async def notify_admin_error_miniapp(title: str):
         return
 
     tb_text = traceback.format_exc()
+
+    # bot.py'dagi notify_admin_error bilan bir xil sabab —
+    # base64 rasm ma'lumoti xato matniga tushib qolsa, foydali
+    # qismni ko'milib ketishining oldini olamiz.
+    tb_text = re.sub(
+        r"[A-Za-z0-9+/]{200,}={0,2}",
+        "<<< base64 ma'lumot olib tashlandi >>>",
+        tb_text,
+    )
 
     if len(tb_text) > 3500:
         tb_text = "...\n" + tb_text[-3500:]
@@ -280,6 +290,9 @@ async def api_list_styles(
         {
             "id": key,
             "label": style_label(key, lang),
+            "thumbnail": STYLE_TEMPLATES[key].get(
+                "thumbnail"
+            ),
         }
         for key in STYLE_TEMPLATES.keys()
     ]
@@ -953,5 +966,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-    )
-
+            )
