@@ -177,8 +177,17 @@ VIDEO_MODELS = {
 
 MUSIC_MODEL_ID = "fal-ai/minimax-music"
 
-# fal.ai rasmga stil berish uchun model
-STYLE_MODEL_ID = "fal-ai/flux/dev/image-to-image"
+# fal.ai rasmga stil berish uchun model — Google Gemini 2.5
+# Flash Image ("nano-banana"). MUHIM: FLUX.1 [dev] image-to-image
+# o'rniga shu modelga o'tkazildi, chunki FLUX yuz-identifikatsiyani
+# ataylab saqlamaydi (umumiy diffuziya img2img, "strength"
+# parametri bilan sifat/o'xshashlik muvozanatini topib bo'lmadi —
+# past qiymatda stil sezilmasdi, yuqori qiymatda yuz butunlay
+# boshqa odamga aylanib qolardi). Gemini 2.5 Flash Image esa
+# instruksiya asosida tahrirlaydigan model — u keskin uslub
+# o'zgarishlarida ham odam yuzini ishonchli saqlaydi, shu bilan
+# birga xuddi shu FAL_KEY orqali ishlaydi (yangi kalit shart emas).
+STYLE_MODEL_ID = "fal-ai/gemini-25-flash-image/edit"
 
 
 # ============================================================
@@ -1182,26 +1191,26 @@ async def apply_fal_ai_style(
     style_prompt: str,
 ) -> str | None:
     """
-    Telegram rasmini FLUX image-to-image orqali stil beradi.
+    Telegram rasmini Google Gemini 2.5 Flash Image
+    ("nano-banana") orqali stil beradi.
 
     Model:
-        fal-ai/flux/dev/image-to-image
+        fal-ai/gemini-25-flash-image/edit
 
     Parametrlar:
-        image_url (base64 data URL sifatida — pastga qarang)
+        image_urls (massiv — base64 data URL sifatida)
         prompt
 
-    MUHIM TUZATISH (topilgan haqiqiy xato): avval rasm
-    fal_client.upload() orqali fal.ai'ning alohida CDN
-    serveriga (fal.media) yuklanardi, lekin Railway'ning bu
-    konteynerida aynan o'sha CDN domenini DNS orqali hal
-    qilib bo'lmadi ("No address associated with hostname" —
-    boshqa fal.ai so'rovlari, masalan oddiy rasm yaratish,
-    muammosiz ishlagani buni tasdiqladi, demak muammo faqat
-    o'sha bitta CDN domenida edi). Shu sabab endi rasm CDN'ga
-    yuklanmaydi — o'rniga to'g'ridan-to'g'ri base64 "data URL"
-    sifatida modelga beriladi, bu esa alohida CDN'ga ulanish
-    zaruratini butunlay yo'qotadi.
+    MUHIM: avval fal-ai/flux/dev/image-to-image ishlatilgan
+    edi, lekin u umumiy diffuziya img2img modeli bo'lgani
+    uchun yuz-identifikatsiyani ishonchli saqlay olmadi —
+    "strength" past bo'lsa stil sezilmasdi, yuqori bo'lsa yuz
+    butunlay boshqa odamga aylanib qolardi. Gemini 2.5 Flash
+    Image esa instruksiya asosida tahrirlaydigan model bo'lib,
+    keskin uslub o'zgarishlarida ham asl yuzni ishonchli
+    saqlaydi, shuning uchun bu modelga o'tkazildi. Rasm CDN'ga
+    yuklanmasdan (oldingi DNS muammosining oldini olish uchun),
+    to'g'ridan-to'g'ri base64 "data URL" sifatida beriladi.
     """
 
     def run_generation():
@@ -1217,13 +1226,11 @@ async def apply_fal_ai_style(
         result = fal_client.subscribe(
             STYLE_MODEL_ID,
             arguments={
-                "image_url": image_url,
+                # MUHIM: bu model "image_url" (birlik) emas,
+                # "image_urls" (ko'plik, massiv) argumentini
+                # kutadi.
+                "image_urls": [image_url],
                 "prompt": style_prompt,
-                # MUHIM: 0.35 — yuzni juda yaxshi saqladi, lekin
-                # stil deyarli sezilmadi. 0.55 — stil sezildi,
-                # lekin yuz ko'proq o'zgardi. Ikkovi oralig'ida
-                # muvozanat qidirilmoqda.
-                "strength": 0.45,
             },
         )
 
