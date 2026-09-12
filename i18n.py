@@ -582,6 +582,38 @@ STYLE_LABELS = {
         "ky": "👥 Клон эффекти",
         "en": "👥 Clone effect",
     },
+    "cinematic_workshop": {
+        "uz": "🔧 Kinematik ustaxona",
+        "ru": "🔧 Кинематографичная мастерская",
+        "kk": "🔧 Кинематографиялық шеберхана",
+        "tg": "🔧 Устохонаи синамоӣ",
+        "ky": "🔧 Кинематографиялык устакана",
+        "en": "🔧 Cinematic workshop",
+    },
+    "steampunk_portrait": {
+        "uz": "⚙️ Steampunk",
+        "ru": "⚙️ Стимпанк",
+        "kk": "⚙️ Стимпанк",
+        "tg": "⚙️ Стимпанк",
+        "ky": "⚙️ Стимпанк",
+        "en": "⚙️ Steampunk",
+    },
+    "paris_night_portrait": {
+        "uz": "🗼 Parij kechasi",
+        "ru": "🗼 Ночной Париж",
+        "kk": "🗼 Түнгі Париж",
+        "tg": "🗼 Шаби Париж",
+        "ky": "🗼 Түнкү Париж",
+        "en": "🗼 Paris night",
+    },
+    "disco_night_portrait": {
+        "uz": "🪩 Disko kechasi",
+        "ru": "🪩 Ночь в диско",
+        "kk": "🪩 Диско түні",
+        "tg": "🪩 Шаби диско",
+        "ky": "🪩 Диско түнү",
+        "en": "🪩 Disco night",
+    },
 }
 
 
@@ -592,4 +624,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-    )
+)
