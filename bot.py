@@ -1219,13 +1219,18 @@ async def apply_fal_ai_style(
             arguments={
                 "image_url": image_url,
                 "prompt": style_prompt,
-                # MUHIM TUZATISH: standart "strength" juda
-                # yuqori bo'lgani uchun model asl rasmni deyarli
-                # e'tiborga olmay, faqat matndan butunlay yangi
-                # (boshqa odam) rasm yaratardi. Pastroq qiymat
-                # asl yuz va tuzilishni ko'proq saqlab qolib,
-                # faqat stilni o'zgartiradi.
-                "strength": 0.55,
+                # MUHIM: fal.ai rasmiy hujjatiga ko'ra bu model
+                # (fal-ai/flux/dev/image-to-image) InstantID
+                # kabi yuz-identifikatsiyani ATAYLAB saqlaydigan
+                # maxsus model EMAS — u asl rasmni faqat
+                # boshlang'ich kompozitsiya sifatida ishlatadi.
+                # 0.55 qiymati hali ham yuzni yetarlicha
+                # o'zgartirib yuborgani sababli yanada
+                # pasaytirildi. Agar bu ham yetarli bo'lmasa,
+                # 0.25-0.3 oralig'ini sinab ko'rish kerak
+                # bo'ladi (juda past bo'lsa esa stil deyarli
+                # sezilmay qolishi mumkin — muvozanat kerak).
+                "strength": 0.35,
             },
         )
 
