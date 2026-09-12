@@ -624,4 +624,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-)
+               )
