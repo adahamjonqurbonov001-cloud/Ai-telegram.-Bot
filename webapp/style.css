@@ -351,6 +351,18 @@ button {
   align-items: center;
   justify-content: center;
   font-size: 40px;
+  overflow: hidden;
+}
+
+/* MUHIM: agar stil uchun haqiqiy namuna rasm (thumbnail)
+   berilgan bo'lsa, emoji o'rniga shu <img> to'liq katakni
+   qoplab, chetlari kesilib (object-fit: cover) chiroyli
+   ko'rinadi. */
+.style-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .style-label {
