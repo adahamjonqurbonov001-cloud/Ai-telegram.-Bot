@@ -1219,6 +1219,13 @@ async def apply_fal_ai_style(
             arguments={
                 "image_url": image_url,
                 "prompt": style_prompt,
+                # MUHIM TUZATISH: standart "strength" juda
+                # yuqori bo'lgani uchun model asl rasmni deyarli
+                # e'tiborga olmay, faqat matndan butunlay yangi
+                # (boshqa odam) rasm yaratardi. Pastroq qiymat
+                # asl yuz va tuzilishni ko'proq saqlab qolib,
+                # faqat stilni o'zgartiradi.
+                "strength": 0.55,
             },
         )
 
