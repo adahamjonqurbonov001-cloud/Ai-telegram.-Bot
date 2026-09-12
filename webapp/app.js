@@ -744,8 +744,15 @@ async function loadStyles() {
       const emoji = emojiMatch ? emojiMatch[0] : "🎨";
       const text = style.label.replace(/\p{Emoji}/gu, "").trim();
 
+      // MUHIM: agar bu stil uchun haqiqiy namuna rasm (thumbnail)
+      // bo'lsa, emoji o'rniga o'sha rasm ko'rsatiladi — foydalanuvchi
+      // stil natijasi qanday ko'rinishini oldindan ko'radi.
+      const thumbInner = style.thumbnail
+        ? `<img src="${style.thumbnail}" alt="${text}" loading="lazy" />`
+        : emoji;
+
       card.innerHTML = `
-        <div class="style-thumb">${emoji}</div>
+        <div class="style-thumb">${thumbInner}</div>
         <div class="style-label">${text}</div>
       `;
 
