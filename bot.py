@@ -1907,11 +1907,22 @@ async def process_style_photo(
         photo.file_id
     )
 
-    image_url = (
-        "https://api.telegram.org/file/bot"
-        f"{TELEGRAM_BOT_TOKEN}/"
-        f"{tg_file.file_path}"
-    )
+    # MUHIM TUZATISH: python-telegram-bot kutubxonasining
+    # hozirgi versiyasida tg_file.file_path allaqachon TO'LIQ
+    # URL ("https://api.telegram.org/file/bot.../photos/..."
+    # ko'rinishida) qaytaradi — avvalgi kod uni yana bir marta
+    # asosiy URL bilan qo'shib qurardi, natijada manzil ikki
+    # marta takrorlanib, 404 xatosiga olib kelardi. Endi
+    # file_path allaqachon to'liq URL bo'lsa, o'sha ishlatiladi;
+    # aks holda (eski uslub, nisbiy yo'l) avvalgidek quriladi.
+    if tg_file.file_path.startswith("http"):
+        image_url = tg_file.file_path
+    else:
+        image_url = (
+            "https://api.telegram.org/file/bot"
+            f"{TELEGRAM_BOT_TOKEN}/"
+            f"{tg_file.file_path}"
+        )
 
     await context.bot.send_chat_action(
         chat_id=chat_id,
