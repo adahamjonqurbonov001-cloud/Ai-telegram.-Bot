@@ -37,6 +37,7 @@ import asyncio
 import logging
 import traceback
 import base64
+import re
 
 import httpx
 import fal_client
@@ -328,6 +329,20 @@ async def notify_admin_error(
         return
 
     tb_text = traceback.format_exc()
+
+    # MUHIM TUZATISH: ba'zi xatolar (masalan fal.ai'ning
+    # validatsiya xabarlari) o'z ichiga yuborilgan rasmning
+    # BUTUN base64 ma'lumotini qaytarib yuborishi mumkin —
+    # bu bir necha o'n ming belgidan iborat bo'lib, xabarni
+    # 3500 belgigacha kesganimizda aynan FOYDALI qism (xato
+    # turi va sababi, odatda oxirida) butunlay ko'milib
+    # ketardi. Shu sabab avval uzun base64-ga o'xshash
+    # qatorlar olib tashlanadi, keyingina uzunlik cheklanadi.
+    tb_text = re.sub(
+        r"[A-Za-z0-9+/]{200,}={0,2}",
+        "<<< base64 ma'lumot olib tashlandi >>>",
+        tb_text,
+    )
 
     # Telegram xabar uzunligi ~4096 belgi bilan
     # cheklangani uchun oxirgi qismini olamiz —
@@ -805,6 +820,60 @@ STYLE_TEMPLATES = {
             "lighting across all copies. Preserve the "
             "person's identity and facial features in "
             "every copy."
+        ),
+    },
+
+    "cinematic_workshop": {
+        "prompt": (
+            "Transform the provided photo into a "
+            "cinematic moody portrait of the person "
+            "sitting in a dim workshop or garage, warm "
+            "backlighting streaming through dusty air, "
+            "shallow depth of field with blurred tools "
+            "and machinery in the background, dramatic "
+            "film-still atmosphere. Preserve the "
+            "person's identity and facial features."
+        ),
+    },
+
+    "steampunk_portrait": {
+        "prompt": (
+            "Transform the provided photo into an epic "
+            "steampunk portrait: the person wearing "
+            "brass goggles pushed up on the forehead, "
+            "leather straps, brass gauges and mechanical "
+            "armor pieces, standing before a sprawling "
+            "industrial steampunk cityscape with giant "
+            "gears, smokestacks, and airships in the sky, "
+            "warm golden dramatic lighting. Preserve the "
+            "person's identity and facial features."
+        ),
+    },
+
+    "paris_night_portrait": {
+        "prompt": (
+            "Transform the provided photo into an "
+            "elegant evening portrait of the person "
+            "wearing a stylish black blazer, leaning on "
+            "a wrought-iron balcony railing, with the "
+            "Eiffel Tower glowing at dusk in the "
+            "background among classic Parisian buildings "
+            "and a lit street lamp, cinematic travel "
+            "photography style. Preserve the person's "
+            "identity and facial features."
+        ),
+    },
+
+    "disco_night_portrait": {
+        "prompt": (
+            "Transform the provided photo into a "
+            "vibrant portrait of the person at a retro "
+            "disco nightclub, wearing a shiny patterned "
+            "shirt with a gold chain necklace, colorful "
+            "laser lights and a glowing neon sign in the "
+            "background, energetic crowd dancing, film-"
+            "photography aesthetic. Preserve the "
+            "person's identity and facial features."
         ),
     },
 }
