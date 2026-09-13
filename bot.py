@@ -834,7 +834,7 @@ STYLE_TEMPLATES = {
             "film-still atmosphere. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/cinematic_workshop-1.jpg",
+        "thumbnail": "/thumbs/cinematic_workshop.jpg",
     },
 
     "steampunk_portrait": {
@@ -849,7 +849,7 @@ STYLE_TEMPLATES = {
             "warm golden dramatic lighting. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/steampunk_portrait-1.jpg",
+        "thumbnail": "/thumbs/steampunk_portrait.jpg",
     },
 
     "paris_night_portrait": {
@@ -864,7 +864,7 @@ STYLE_TEMPLATES = {
             "photography style. Preserve the person's "
             "identity and facial features."
         ),
-        "thumbnail": "/thumbs/paris_night_portrait-1.jpg",
+        "thumbnail": "/thumbs/paris_night_portrait.jpg",
     },
 
     "disco_night_portrait": {
@@ -878,7 +878,7 @@ STYLE_TEMPLATES = {
             "photography aesthetic. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/disco_night_portrait-1.jpg",
+        "thumbnail": "/thumbs/disco_night_portrait.jpg",
     },
 }
 
