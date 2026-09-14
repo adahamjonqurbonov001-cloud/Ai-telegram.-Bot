@@ -730,6 +730,7 @@ STYLE_TEMPLATES = {
             "studio photography. Preserve the "
             "person's identity and facial features."
         ),
+        "thumbnail": "/thumbs/bw_portrait.jpg",
     },
 
     "cinematic_car": {
@@ -751,6 +752,7 @@ STYLE_TEMPLATES = {
             "artistic illustration style. Preserve "
             "the original subject and composition."
         ),
+        "thumbnail": "/thumbs/vintage_sketch.jpg",
     },
 
     "golden_hour": {
@@ -771,6 +773,7 @@ STYLE_TEMPLATES = {
             "photography, studio lighting. Preserve "
             "recognizable features."
         ),
+        "thumbnail": "/thumbs/figurine.jpg",
     },
 
     "fantasy_armor": {
@@ -781,6 +784,7 @@ STYLE_TEMPLATES = {
             "lighting, film still aesthetic. Preserve "
             "the person's identity and facial features."
         ),
+        "thumbnail": "/thumbs/fantasy_armor.jpg",
     },
 
     "mini_statue_desk": {
@@ -795,6 +799,7 @@ STYLE_TEMPLATES = {
             "modern office background. Preserve the "
             "person's identity and facial features."
         ),
+        "thumbnail": "/thumbs/mini_statue_desk.jpg",
     },
 
     "ink_portrait_color": {
@@ -807,6 +812,7 @@ STYLE_TEMPLATES = {
             "illustration style. Preserve the person's "
             "identity and facial features."
         ),
+        "thumbnail": "/thumbs/ink_portrait_color.jpg",
     },
 
     "clone_multiply": {
@@ -821,6 +827,33 @@ STYLE_TEMPLATES = {
             "person's identity and facial features in "
             "every copy."
         ),
+        "thumbnail": "/thumbs/clone_multiply.jpg",
+    },
+
+    "anime_portrait": {
+        "prompt": (
+            "Transform the provided photo into a "
+            "vibrant anime-style illustration of the "
+            "person, clean line art, cel-shaded "
+            "coloring, dynamic outdoor cityscape "
+            "background, expressive anime eyes while "
+            "keeping a recognizable likeness. Preserve "
+            "the person's identity and facial features."
+        ),
+        "thumbnail": "/thumbs/anime_portrait.jpg",
+    },
+
+    "cartoon_3d_portrait": {
+        "prompt": (
+            "Transform the provided photo into a "
+            "colorful 3D animated movie character "
+            "portrait, big expressive eyes, soft "
+            "rounded friendly features, warm cinematic "
+            "studio lighting, polished 3D animation "
+            "render style. Preserve the person's "
+            "identity and facial features."
+        ),
+        "thumbnail": "/thumbs/cartoon_3d_portrait.jpg",
     },
 
     "cinematic_workshop": {
