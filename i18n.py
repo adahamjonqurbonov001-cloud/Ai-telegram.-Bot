@@ -527,12 +527,12 @@ STYLE_LABELS = {
         "en": "🚗 Cinematic car",
     },
     "vintage_sketch": {
-        "uz": "✏️ Vintage eskiz",
-        "ru": "✏️ Винтажный эскиз",
-        "kk": "✏️ Винтаж эскиз",
-        "tg": "✏️ Эскизи винтажӣ",
-        "ky": "✏️ Винтаж эскиз",
-        "en": "✏️ Vintage sketch",
+        "uz": "🕰 Retro 80-lar",
+        "ru": "🕰 Ретро 80-х",
+        "kk": "🕰 Ретро 80-жылдар",
+        "tg": "🕰 Ретрои солҳои 80",
+        "ky": "🕰 Ретро 80-жылдар",
+        "en": "🕰 80s Retro",
     },
     "golden_hour": {
         "uz": "🌅 Oltin soat portreti",
@@ -640,4 +640,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-)
+    )
