@@ -746,11 +746,13 @@ STYLE_TEMPLATES = {
 
     "vintage_sketch": {
         "prompt": (
-            "Transform the provided photo into a "
-            "detailed vintage pencil sketch, "
-            "cross-hatching shading, hand-drawn "
-            "artistic illustration style. Preserve "
-            "the original subject and composition."
+            "Transform the provided photo into an "
+            "authentic 1980s retro photograph: warm "
+            "faded film colors, soft grain, vintage "
+            "clothing and styling typical of the era, "
+            "a period-accurate background, analog "
+            "photo quality. Preserve the person's "
+            "identity and facial features."
         ),
         "thumbnail": "/thumbs/vintage_sketch.jpg",
     },
