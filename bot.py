@@ -190,6 +190,15 @@ MUSIC_MODEL_ID = "fal-ai/minimax-music"
 # birga xuddi shu FAL_KEY orqali ishlaydi (yangi kalit shart emas).
 STYLE_MODEL_ID = "fal-ai/gemini-25-flash-image/edit"
 
+# Har bir stil promptiga qo'shiladigan umumiy sifat-oshiruvchi
+# jumla — natija rasmining o'lchami, o'tkirligi va detallarini
+# yaxshilaydi (loyqa/siqilgan ko'rinishning oldini oladi).
+STYLE_QUALITY_SUFFIX = (
+    "Ultra high resolution, extremely detailed, sharp focus, "
+    "professional photographic quality, no blur, no compression "
+    "artifacts, crisp fine details."
+)
+
 
 # ============================================================
 # COIN NARXLARI
@@ -1338,7 +1347,13 @@ async def apply_fal_ai_style(
                 # "image_urls" (ko'plik, massiv) argumentini
                 # kutadi.
                 "image_urls": [image_url],
-                "prompt": style_prompt,
+                # MUHIM: STYLE_QUALITY_SUFFIX har bir stil
+                # promptiga qo'shiladi — bu natija rasmining
+                # sifatini (o'lchami, o'tkirligi, detallari)
+                # oshiradi. Bitta markazlashtirilgan joyda
+                # qo'shilgani uchun har bir stilni alohida
+                # tahrirlash shart emas.
+                "prompt": f"{style_prompt} {STYLE_QUALITY_SUFFIX}",
             },
         )
 
