@@ -614,6 +614,22 @@ STYLE_LABELS = {
         "ky": "🪩 Диско түнү",
         "en": "🪩 Disco night",
     },
+    "anime_portrait": {
+        "uz": "🎌 Anime",
+        "ru": "🎌 Аниме",
+        "kk": "🎌 Аниме",
+        "tg": "🎌 Аниме",
+        "ky": "🎌 Аниме",
+        "en": "🎌 Anime",
+    },
+    "cartoon_3d_portrait": {
+        "uz": "🎬 3D animatsion",
+        "ru": "🎬 3D мультфильм",
+        "kk": "🎬 3D мультфильм",
+        "tg": "🎬 Мултфилми 3D",
+        "ky": "🎬 3D мультфильм",
+        "en": "🎬 3D cartoon",
+    },
 }
 
 
@@ -624,4 +640,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-               )
+)
