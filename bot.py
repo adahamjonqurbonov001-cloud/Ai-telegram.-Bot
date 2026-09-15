@@ -64,6 +64,8 @@ from telegram.ext import (
 
 from anthropic import Anthropic
 
+from agent import classify_agent_request
+
 
 # ============================================================
 # SOZLAMALAR
@@ -189,15 +191,6 @@ MUSIC_MODEL_ID = "fal-ai/minimax-music"
 # o'zgarishlarida ham odam yuzini ishonchli saqlaydi, shu bilan
 # birga xuddi shu FAL_KEY orqali ishlaydi (yangi kalit shart emas).
 STYLE_MODEL_ID = "fal-ai/gemini-25-flash-image/edit"
-
-# Har bir stil promptiga qo'shiladigan umumiy sifat-oshiruvchi
-# jumla — natija rasmining o'lchami, o'tkirligi va detallarini
-# yaxshilaydi (loyqa/siqilgan ko'rinishning oldini oladi).
-STYLE_QUALITY_SUFFIX = (
-    "Ultra high resolution, extremely detailed, sharp focus, "
-    "professional photographic quality, no blur, no compression "
-    "artifacts, crisp fine details."
-)
 
 
 # ============================================================
@@ -649,6 +642,9 @@ def main_menu_keyboard(
                 ),
             ],
             [
+                KeyboardButton("🤖 Agent"),
+            ],
+            [
                 KeyboardButton(
                     t(lang, "btn_image")
                 ),
@@ -739,7 +735,6 @@ STYLE_TEMPLATES = {
             "studio photography. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/bw_portrait.jpg",
     },
 
     "cinematic_car": {
@@ -755,15 +750,12 @@ STYLE_TEMPLATES = {
 
     "vintage_sketch": {
         "prompt": (
-            "Transform the provided photo into an "
-            "authentic 1980s retro photograph: warm "
-            "faded film colors, soft grain, vintage "
-            "clothing and styling typical of the era, "
-            "a period-accurate background, analog "
-            "photo quality. Preserve the person's "
-            "identity and facial features."
+            "Transform the provided photo into a "
+            "detailed vintage pencil sketch, "
+            "cross-hatching shading, hand-drawn "
+            "artistic illustration style. Preserve "
+            "the original subject and composition."
         ),
-        "thumbnail": "/thumbs/vintage_sketch.jpg",
     },
 
     "golden_hour": {
@@ -784,7 +776,6 @@ STYLE_TEMPLATES = {
             "photography, studio lighting. Preserve "
             "recognizable features."
         ),
-        "thumbnail": "/thumbs/figurine.jpg",
     },
 
     "fantasy_armor": {
@@ -795,7 +786,6 @@ STYLE_TEMPLATES = {
             "lighting, film still aesthetic. Preserve "
             "the person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/fantasy_armor.jpg",
     },
 
     "mini_statue_desk": {
@@ -810,7 +800,6 @@ STYLE_TEMPLATES = {
             "modern office background. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/mini_statue_desk.jpg",
     },
 
     "ink_portrait_color": {
@@ -823,7 +812,6 @@ STYLE_TEMPLATES = {
             "illustration style. Preserve the person's "
             "identity and facial features."
         ),
-        "thumbnail": "/thumbs/ink_portrait_color.jpg",
     },
 
     "clone_multiply": {
@@ -838,33 +826,6 @@ STYLE_TEMPLATES = {
             "person's identity and facial features in "
             "every copy."
         ),
-        "thumbnail": "/thumbs/clone_multiply.jpg",
-    },
-
-    "anime_portrait": {
-        "prompt": (
-            "Transform the provided photo into a "
-            "vibrant anime-style illustration of the "
-            "person, clean line art, cel-shaded "
-            "coloring, dynamic outdoor cityscape "
-            "background, expressive anime eyes while "
-            "keeping a recognizable likeness. Preserve "
-            "the person's identity and facial features."
-        ),
-        "thumbnail": "/thumbs/anime_portrait.jpg",
-    },
-
-    "cartoon_3d_portrait": {
-        "prompt": (
-            "Transform the provided photo into a "
-            "colorful 3D animated movie character "
-            "portrait, big expressive eyes, soft "
-            "rounded friendly features, warm cinematic "
-            "studio lighting, polished 3D animation "
-            "render style. Preserve the person's "
-            "identity and facial features."
-        ),
-        "thumbnail": "/thumbs/cartoon_3d_portrait.jpg",
     },
 
     "cinematic_workshop": {
@@ -878,7 +839,6 @@ STYLE_TEMPLATES = {
             "film-still atmosphere. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/cinematic_workshop.jpg",
     },
 
     "steampunk_portrait": {
@@ -893,7 +853,6 @@ STYLE_TEMPLATES = {
             "warm golden dramatic lighting. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/steampunk_portrait.jpg",
     },
 
     "paris_night_portrait": {
@@ -908,7 +867,6 @@ STYLE_TEMPLATES = {
             "photography style. Preserve the person's "
             "identity and facial features."
         ),
-        "thumbnail": "/thumbs/paris_night_portrait.jpg",
     },
 
     "disco_night_portrait": {
@@ -922,7 +880,6 @@ STYLE_TEMPLATES = {
             "photography aesthetic. Preserve the "
             "person's identity and facial features."
         ),
-        "thumbnail": "/thumbs/disco_night_portrait.jpg",
     },
 }
 
@@ -1347,13 +1304,7 @@ async def apply_fal_ai_style(
                 # "image_urls" (ko'plik, massiv) argumentini
                 # kutadi.
                 "image_urls": [image_url],
-                # MUHIM: STYLE_QUALITY_SUFFIX har bir stil
-                # promptiga qo'shiladi — bu natija rasmining
-                # sifatini (o'lchami, o'tkirligi, detallari)
-                # oshiradi. Bitta markazlashtirilgan joyda
-                # qo'shilgani uchun har bir stilni alohida
-                # tahrirlash shart emas.
-                "prompt": f"{style_prompt} {STYLE_QUALITY_SUFFIX}",
+                "prompt": style_prompt,
             },
         )
 
@@ -1401,6 +1352,7 @@ async def start(
     conversation_history[chat_id] = []
 
     awaiting_image_prompt[chat_id] = False
+    awaiting_agent_request[chat_id] = False
     awaiting_video_model_choice[chat_id] = False
 
     awaiting_video_prompt.pop(
@@ -1893,6 +1845,7 @@ async def new_chat(
     conversation_history[chat_id] = []
 
     awaiting_image_prompt[chat_id] = False
+    awaiting_agent_request[chat_id] = False
     awaiting_video_model_choice[chat_id] = False
 
     awaiting_video_prompt.pop(
@@ -3065,6 +3018,127 @@ async def handle_message(
             reply_markup=language_inline_keyboard(),
         )
 
+        return
+
+    # --------------------------------------------------------
+    # 🤖 AGENT
+    # --------------------------------------------------------
+    # Agent tugmasi bosilganda keyingi xabar Agent orqali
+    # avtomatik ravishda kerakli funksiyaga yo'naltiriladi.
+    if user_text == "🤖 Agent":
+        if get_balance(chat_id) < COIN_COST_TEXT:
+            await update.message.reply_text(
+                t(
+                    lang,
+                    "insufficient_coins",
+                    cost=COIN_COST_TEXT,
+                    balance=get_balance(chat_id),
+                ),
+                reply_markup=main_menu_keyboard(lang),
+            )
+            return
+
+        # Agent rejimi uchun flag.
+        awaiting_agent_request[chat_id] = True
+
+        await update.message.reply_text(
+            "🤖 Agent yoqildi.\n\n"
+            "Nima qilishimni oddiy tilda yozing. Masalan:\n"
+            "• Menga futuristik shahar rasmini yarat\n"
+            "• Shu g'oyadan video qil\n"
+            "• Bu matnni ovozga aylantir\n"
+            "• Menga motivatsiya haqida maslahat ber\n\n"
+            "Agent vazifani o'zi kerakli funksiyaga yuboradi.",
+            reply_markup=main_menu_keyboard(lang),
+        )
+        return
+
+    # Agent rejimida kelgan tabiiy topshiriq.
+    if awaiting_agent_request.get(chat_id):
+        awaiting_agent_request[chat_id] = False
+
+        try:
+            route = await classify_agent_request(
+                claude_client,
+                user_text,
+                lang,
+            )
+        except Exception:
+            logger.exception("Agent router xatosi")
+            await update.message.reply_text(
+                t(lang, "text_error"),
+                reply_markup=main_menu_keyboard(lang),
+            )
+            return
+
+        action = route["action"]
+        prompt = route["prompt"] or user_text
+        model = route["model"]
+
+        if action == "image":
+            await generate_image_from_prompt(
+                update, context, prompt
+            )
+            return
+
+        if action == "video":
+            if get_balance(chat_id) < COIN_COST_VIDEO:
+                await update.message.reply_text(
+                    t(
+                        lang,
+                        "insufficient_coins",
+                        cost=COIN_COST_VIDEO,
+                        balance=get_balance(chat_id),
+                    ),
+                    reply_markup=main_menu_keyboard(lang),
+                )
+                return
+
+            # Model aytilmagan bo'lsa Agent uchun arzon Wan.
+            await generate_video_from_prompt(
+                update,
+                context,
+                prompt,
+                model or "wan",
+            )
+            return
+
+        if action == "voice":
+            await generate_voice_from_text(
+                update, context, prompt
+            )
+            return
+
+        if action == "music":
+            await generate_music_from_prompt(
+                update, context, prompt
+            )
+            return
+
+        if action == "style":
+            await show_styles_menu(update, context)
+            return
+
+        if action == "balance":
+            await show_balance(update, context)
+            return
+
+        if action == "bonus":
+            await daily_bonus(update, context)
+            return
+
+        if action == "help":
+            await help_command(update, context)
+            return
+
+        if action == "new_chat":
+            await new_chat(update, context)
+            return
+
+        # chat -> mavjud oddiy Claude chat.
+        # Bu yerda Agent alohida coin olmaydi; mavjud handle_message
+        # chat oqimi 1 coin hisobini bajaradi.
+        await handle_message(update, context)
         return
 
     # --------------------------------------------------------
