@@ -836,6 +836,55 @@ function updateBalance(value) {
 
 // ============ SEND LOGIC ============
 
+// ============ VIDEO JOB POLLING ============
+//
+// MUHIM (YANGI): /api/generate-video darhol job_id qaytaradi;
+// haqiqiy video orqa fonda tayyorlanadi. Shu funksiya natija
+// tayyor (yoki xato) bo'lguncha /api/video-status'ni har 3
+// soniyada so'raydi. Bitta so'rov juda tez qaytgani uchun bu
+// yondashuv uzoq davom etadigan Kling generatsiyasida ham
+// ishonchli ishlaydi — hech qanday ulanish uzoq ochiq
+// turmaydi.
+const VIDEO_POLL_INTERVAL_MS = 3000;
+const VIDEO_POLL_MAX_ATTEMPTS = 100; // ~5 daqiqa
+
+async function pollVideoStatus(jobId, pendingBubbleEl) {
+  for (let attempt = 0; attempt < VIDEO_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, VIDEO_POLL_INTERVAL_MS));
+
+    let data;
+
+    try {
+      const resp = await fetch(
+        "/api/video-status?job_id=" +
+          encodeURIComponent(jobId) +
+          "&init_data=" +
+          encodeURIComponent(initData)
+      );
+      data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
+    } catch (e) {
+      // Vaqtinchalik tarmoq uzilishi bo'lishi mumkin — darhol
+      // taslim bo'lmaymiz, keyingi urinishda davom etamiz.
+      continue;
+    }
+
+    if (data.status === "done") {
+      resolvePendingAsVideo(pendingBubbleEl, data.video_url);
+      updateBalance(data.balance);
+      return;
+    }
+
+    if (data.status === "error") {
+      throw new Error(data.detail || tr("genericError"));
+    }
+
+    // status === "pending" — davom etamiz
+  }
+
+  throw new Error(tr("genericError"));
+}
+
 async function handleSend() {
   const text = messageInput.value.trim();
   if (!text) return;
@@ -894,8 +943,14 @@ async function handleSend() {
       const resp = await fetch("/api/generate-video", { method: "POST", body: form });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || tr("genericError"));
-      resolvePendingAsVideo(pending, data.video_url);
-      updateBalance(data.balance);
+
+      // MUHIM (YANGI): server endi videoni darhol qaytarmaydi —
+      // faqat job_id beradi (chunki Kling generatsiyasi bir necha
+      // daqiqa davom etishi mumkin, va HTTP so'rovni shuncha uzoq
+      // ochiq ushlab turish mobil tarmoqda "Failed to fetch"
+      // xatosiga olib kelardi). Shu sabab natijani
+      // /api/video-status'dan so'rab-so'rab (polling) olamiz.
+      await pollVideoStatus(data.job_id, pending);
 
       // Keyingi video uchun kadrni avtomatik tozalamaymiz —
       // foydalanuvchi xohlasa xuddi shu kadrdan yana boshqa
