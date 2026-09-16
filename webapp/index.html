@@ -138,11 +138,31 @@
          qo'llab-quvvatlasa ko'rinadi. -->
     <div class="settings-row hidden" id="videoFrameRow">
       <div class="settings-label" id="frameLabel">Boshlang'ich rasm (ixtiyoriy)</div>
-      <div class="frame-picker">
+      <!-- MUHIM TUZATISH: barcha o'lchamlar shu yerda to'g'ridan-to'g'ri
+           inline style="" sifatida berilgan — style.css'da mos klass
+           bo'lmasa ham (yoki hali qo'shilmagan bo'lsa ham) rasm HAR
+           DOIM kichik va joyida qoladi. Avval faqat CSS klassiga
+           tayanilgan edi — klass topilmasa <img> o'zining asl
+           o'lchamida (masalan 1024x1024) chiqib, pastdagi "tavsif
+           yozish" maydonini butunlay ekrandan chiqarib yuborardi. -->
+      <div class="frame-picker" style="display:flex;align-items:center;gap:8px;">
         <button class="mini-chip" id="videoFrameBtn" type="button">📷 Rasm tanlash</button>
-        <div class="frame-preview hidden" id="videoFramePreviewWrap">
-          <img id="videoFramePreviewImg" alt="" />
-          <button class="frame-remove-btn" id="videoFrameRemoveBtn" type="button">✕</button>
+        <div
+          class="frame-preview hidden"
+          id="videoFramePreviewWrap"
+          style="position:relative;width:56px;height:56px;flex:0 0 56px;"
+        >
+          <img
+            id="videoFramePreviewImg"
+            alt=""
+            style="display:block;width:56px;height:56px;object-fit:cover;border-radius:10px;"
+          />
+          <button
+            class="frame-remove-btn"
+            id="videoFrameRemoveBtn"
+            type="button"
+            style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:11px;line-height:1;cursor:pointer;padding:0;"
+          >✕</button>
         </div>
       </div>
       <input type="file" id="videoFrameInput" accept="image/*" class="hidden-input" />
