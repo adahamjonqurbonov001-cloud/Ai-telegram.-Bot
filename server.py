@@ -32,6 +32,7 @@ import logging
 import os
 import time
 import traceback
+import uuid
 from urllib.parse import parse_qsl
 
 import edge_tts
@@ -237,6 +238,34 @@ api.add_middleware(
 )
 
 telegram_application = None
+
+# ============================================================
+# VIDEO JOB HOLATI (asinxron generatsiya uchun)
+# ============================================================
+#
+# MUHIM (YANGI): Kling video generatsiyasi 1-3+ daqiqa davom
+# etishi mumkin. Avval /api/generate-video shu BUTUN vaqt
+# davomida HTTP so'rovni ochiq ushlab turardi — mobil internet,
+# Telegram WebView yoki Railway'ning oraliq proksisi shuncha
+# uzoq ulanishni ochiq saqlay olmay, "Failed to fetch" xatosi
+# bilan uzib qo'yardi (natija fal.ai'da tayyor bo'lsa ham,
+# foydalanuvchi uni hech qachon ko'rmasdi).
+#
+# Endi /api/generate-video DARHOL (bir necha soniyada) job_id
+# bilan javob qaytaradi, generatsiya esa orqa fonda
+# (asyncio.create_task) davom etadi. Frontend esa
+# /api/video-status?job_id=...ni har 3 soniyada so'rab turadi
+# (polling) — bu naqadar uzoq davom etishidan qat'iy nazar
+# ishonchli ishlaydi, chunki har bir alohida so'rov juda tez
+# (bir necha millisekund) qaytadi.
+#
+# video_jobs — xotirada saqlanadigan oddiy lug'at. MUHIM: bu
+# ham Railway fayl tizimi kabi vaqtinchalik — agar server qayta
+# ishga tushsa (deploy, xatolik va h.k.), hali tugallanmagan
+# job'lar yo'qoladi. Amaliyotda bu muammo emas, chunki bitta
+# video generatsiyasi odatda bir necha daqiqada tugaydi va
+# qayta deploy shu vaqt oralig'ida kamdan-kam bo'ladi.
+video_jobs: dict[str, dict] = {}
 
 
 @api.post("/api/new-chat")
@@ -604,6 +633,75 @@ async def api_generate_image(
     }
 
 
+async def run_video_generation_job(
+    job_id: str,
+    chat_id: int,
+    lang: str,
+    prompt: str,
+    model_key: str,
+    aspect_ratio: str | None,
+    duration: str | None,
+    image_bytes: bytes | None,
+    total_cost: int,
+):
+    """
+    MUHIM (YANGI): asosiy video generatsiyasi shu funksiyada,
+    orqa fonda (HTTP so'rovdan mustaqil ravishda) bajariladi.
+    Natija video_jobs[job_id]'ga yoziladi — frontend uni
+    /api/video-status orqali so'rab oladi. Coin FAQAT
+    muvaffaqiyatli yakunlangandan keyin yechiladi (xato bo'lsa
+    hech narsa yechilmaydi — asl xulq-atvor saqlanib qolgan).
+    """
+
+    try:
+
+        video_url = await generate_fal_video(
+            prompt,
+            model_key,
+            aspect_ratio=aspect_ratio,
+            duration=duration,
+            image_bytes=image_bytes,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Mini App video xatosi (job):"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App video yaratish"
+        )
+
+        video_jobs[job_id] = {
+            "status": "error",
+            "detail": t(lang, "video_error"),
+        }
+
+        return
+
+    if not video_url:
+
+        video_jobs[job_id] = {
+            "status": "error",
+            "detail": t(lang, "no_result"),
+        }
+
+        return
+
+    new_balance = change_balance(
+        chat_id,
+        -total_cost,
+    )
+
+    video_jobs[job_id] = {
+        "status": "done",
+        "video_url": video_url,
+        "balance": new_balance,
+        "cost": total_cost,
+    }
+
+
 @api.post("/api/generate-video")
 async def api_generate_video(
     init_data: str = Form(...),
@@ -614,22 +712,21 @@ async def api_generate_video(
     frame: UploadFile = None,
 ):
     """
-    MUHIM (YANGI): endi shu endpoint quyidagilarni qo'shimcha
-    qabul qiladi:
-        - aspect_ratio  — "16:9" / "9:16" / "1:1" (model
-          qo'llab-quvvatlamasa e'tiborsiz qoldiriladi)
-        - duration      — "5" / "10" soniya (xuddi shunday)
-        - frame         — ixtiyoriy rasm fayli; berilsa VA
-          model rasmdan video (image-to-video) endpointiga
-          ega bo'lsa, video shu rasmdan (birinchi kadr
-          sifatida) yaratiladi
+    MUHIM (YANGI): endi bu endpoint videoni o'zi TAYYORLAMAYDI —
+    faqat tekshiruvlarni (balans, model, rasm qo'llab-
+    quvvatlanishi) o'tkazadi va orqa fon job'ini boshlab, DARHOL
+    job_id bilan javob qaytaradi. Haqiqiy generatsiya
+    run_video_generation_job'da davom etadi (yuqoriga qarang).
+    Frontend natijani /api/video-status?job_id=... orqali
+    so'rab-so'rab (polling) oladi.
 
-    Narx: model "kling_pro" bo'lsa — COIN_COST_VIDEO_PRO_EXTRA
-    qo'shiladi; "frame" (rasmdan video) ishlatilsa —
-    COIN_COST_VIDEO_IMAGE_EXTRA qo'shiladi. Ikkalasi ham
-    generatsiya BOSHLANISHIDAN OLDIN balansdan yechiladi —
-    xato bo'lsa hech narsa yechilmaydi (pastdagi try/except'ga
-    qarang).
+    Qo'shimcha parametrlar avvalgidek:
+        - aspect_ratio, duration — model qo'llab-quvvatlasa
+        - frame — rasmdan video uchun boshlang'ich kadr
+
+    Narx: "kling_pro" — +COIN_COST_VIDEO_PRO_EXTRA;
+    rasmdan video — +COIN_COST_VIDEO_IMAGE_EXTRA. Coin FAQAT
+    job muvaffaqiyatli tugagandan keyin yechiladi.
     """
 
     user = verify_telegram_init_data(
@@ -679,47 +776,78 @@ async def api_generate_video(
             ),
         )
 
-    try:
+    job_id = uuid.uuid4().hex
 
-        video_url = await generate_fal_video(
+    video_jobs[job_id] = {
+        "status": "pending",
+        "chat_id": chat_id,
+    }
+
+    asyncio.create_task(
+        run_video_generation_job(
+            job_id,
+            chat_id,
+            lang,
             prompt,
             model_key,
-            aspect_ratio=aspect_ratio,
-            duration=duration,
-            image_bytes=image_bytes,
+            aspect_ratio,
+            duration,
+            image_bytes,
+            total_cost,
         )
-
-    except Exception:
-
-        logger.exception(
-            "Mini App video xatosi:"
-        )
-
-        await notify_admin_error_miniapp(
-            "Mini App video yaratish"
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail=t(lang, "video_error"),
-        )
-
-    if not video_url:
-        raise HTTPException(
-            status_code=500,
-            detail=t(lang, "no_result"),
-        )
-
-    new_balance = change_balance(
-        chat_id,
-        -total_cost,
     )
 
     return {
-        "video_url": video_url,
-        "balance": new_balance,
+        "job_id": job_id,
         "cost": total_cost,
     }
+
+
+@api.get("/api/video-status")
+async def api_video_status(
+    job_id: str,
+    init_data: str,
+):
+    """
+    Frontend shu endpointni /api/generate-video qaytargan
+    job_id bilan har necha soniyada so'rab turadi. Javob:
+        {"status": "pending"}                       — hali tayyor emas
+        {"status": "done", "video_url": ..., "balance": ...}
+        {"status": "error", "detail": "..."}
+    """
+
+    user = verify_telegram_init_data(
+        init_data
+    )
+
+    chat_id = user["id"]
+
+    job = video_jobs.get(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="job topilmadi",
+        )
+
+    # MUHIM: job faqat uni boshlagan foydalanuvchiga ko'rinadi —
+    # aks holda job_id'ni bilgan istalgan kishi boshqa
+    # birovning video natijasini ko'ra olardi.
+    if job.get("chat_id") != chat_id:
+        raise HTTPException(
+            status_code=403,
+            detail="ruxsat yo'q",
+        )
+
+    if job["status"] == "done":
+        # Natija bir marta o'qilgach, xotirani bo'shatamiz —
+        # video_jobs cheksiz o'sib ketmasligi uchun.
+        video_jobs.pop(job_id, None)
+
+    elif job["status"] == "error":
+        video_jobs.pop(job_id, None)
+
+    return job
 
 
 @api.post("/api/generate-music")
@@ -1005,4 +1133,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-        )
+)
