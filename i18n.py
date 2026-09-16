@@ -360,6 +360,21 @@ TEXTS = {
         "uz": "🔵 Kling 1.6 (sifatli)", "ru": "🔵 Kling 1.6 (качество)", "kk": "🔵 Kling 1.6 (сапалы)",
         "tg": "🔵 Kling 1.6 (босифат)", "ky": "🔵 Kling 1.6 (сапаттуу)", "en": "🔵 Kling 1.6 (high quality)",
     },
+    "video_model_kling_pro": {
+        "uz": "🟣 Kling 1.6 Pro (yuqori sifat)", "ru": "🟣 Kling 1.6 Pro (высокое качество)",
+        "kk": "🟣 Kling 1.6 Pro (жоғары сапа)", "tg": "🟣 Kling 1.6 Pro (сифати баланд)",
+        "ky": "🟣 Kling 1.6 Pro (жогорку сапат)", "en": "🟣 Kling 1.6 Pro (highest quality)",
+    },
+    # Mini App'da tanlangan video model rasmdan video (image-to-video)ni
+    # qo'llab-quvvatlamasa (hozircha faqat Wan'da) shu xabar ko'rsatiladi.
+    "video_image_not_supported": {
+        "uz": "❌ Bu model rasmdan video yaratishni qo'llab-quvvatlamaydi. Boshqa modelni tanlang yoki rasmni olib tashlang.",
+        "ru": "❌ Эта модель не поддерживает создание видео из фото. Выберите другую модель или уберите фото.",
+        "kk": "❌ Бұл модель фотодан видео жасауды қолдамайды. Басқа модельді таңдаңыз немесе фотоны алып тастаңыз.",
+        "tg": "❌ Ин модел сохтани видео аз расмро дастгирӣ намекунад. Модели дигарро интихоб кунед ё расмро хориҷ кунед.",
+        "ky": "❌ Бул модель сүрөттөн видео жасоону колдобойт. Башка модель тандаңыз же сүрөттү алып салыңыз.",
+        "en": "❌ This model doesn't support image-to-video. Choose a different model or remove the photo.",
+    },
     "btn_buy_coins": {
         "uz": "💳 Coin sotib olish", "ru": "💳 Купить монеты", "kk": "💳 Тиын сатып алу",
         "tg": "💳 Харидани танга", "ky": "💳 Монета сатып алуу", "en": "💳 Buy coins",
