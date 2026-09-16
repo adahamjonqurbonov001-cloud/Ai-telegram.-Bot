@@ -135,12 +135,6 @@ WELCOME_IMAGE_PATH = "welcome.jpg"
 MODEL_NAME = "claude-sonnet-4-6"
 
 # edge-tts ovozlari — har bir interfeys tili uchun mos ovoz.
-# MUHIM: avval TTS_VOICE bitta qiymatga (faqat uz-UZ) qattiq
-# bog'langan edi, shuning uchun rus/qozoq va h.k. tillarda
-# yozilgan matn ovozga aylantirilganda xato chiqar edi (Microsoft
-# TTS xizmati mos kelmagan tildagi matnni rad etadi).
-# ky (qirg'iz) va tg (tojik) uchun Microsoft edge-tts'da tabiiy
-# ovoz yo'q, shuning uchun ular ruscha ovozga zaxiralangan.
 TTS_VOICE_MAP = {
     "uz": "uz-UZ-MadinaNeural",
     "ru": "ru-RU-SvetlanaNeural",
@@ -162,10 +156,43 @@ HF_MODEL_ENDPOINT = (
     "higgsfield-ai/soul/v2/standard"
 )
 
+# ------------------------------------------------------------
+# VIDEO MODELLARI
+# ------------------------------------------------------------
+# MUHIM (Mini App yangilanishi): har bir model endi quyidagi
+# qo'shimcha maydonlarga ega bo'ldi:
+#
+#   model_id        — matndan video (text-to-video) fal.ai
+#                      endpointi
+#   image_model_id   — rasmdan video (image-to-video) endpointi;
+#                      model buni qo'llamasa — None
+#   durations         — qo'llab-quvvatlanadigan davomiylik
+#                      qiymatlari (soniyada, string); model
+#                      buni qo'llamasa — None
+#   aspect_ratios     — qo'llab-quvvatlanadigan format
+#                      qiymatlari; model buni qo'llamasa — None
+#
+# Bu maydonlar Mini App'dagi tanlov menyusini (model / format /
+# davomiylik / rasmdan video) to'g'ri chizish va fal.ai'ga
+# FAQAT model qo'llaydigan parametrlarni yuborish uchun
+# ishlatiladi (pastdagi generate_fal_video funksiyasiga qarang).
+#
+# Model ID'lar fal.ai'ning rasmiy hujjatlariga mos:
+#   - "wan"        — eng arzon, lekin fal-ai/wan-t2v davomiylik/
+#                     format parametrlarini qabul qilmaydi.
+#   - "kling"       — fal-ai/kling-video/v1.6/standard —
+#                     avvaldan ishlatilgan, o'zgarmadi.
+#   - "kling_pro"   — fal-ai/kling-video/v2.6/pro — yangi,
+#                     yuqori sifat + tabiiy audio, birroz
+#                     qimmatroq (COIN_COST_VIDEO_PRO_EXTRA
+#                     qo'shimcha narxiga qarang).
 VIDEO_MODELS = {
     "wan": {
         "label": "🟢 Wan 2.6 (arzon)",
         "model_id": "fal-ai/wan-t2v",
+        "image_model_id": None,
+        "durations": None,
+        "aspect_ratios": None,
     },
     "kling": {
         "label": "🔵 Kling 1.6 (sifatli)",
@@ -173,26 +200,34 @@ VIDEO_MODELS = {
             "fal-ai/kling-video/"
             "v1.6/standard/text-to-video"
         ),
+        "image_model_id": (
+            "fal-ai/kling-video/"
+            "v2.1/standard/image-to-video"
+        ),
+        "durations": ["5", "10"],
+        "aspect_ratios": ["16:9", "9:16", "1:1"],
+    },
+    "kling_pro": {
+        "label": "🟣 Kling 2.6 Pro (premium)",
+        "model_id": (
+            "fal-ai/kling-video/"
+            "v2.6/pro/text-to-video"
+        ),
+        "image_model_id": (
+            "fal-ai/kling-video/"
+            "v2.1/pro/image-to-video"
+        ),
+        "durations": ["5", "10"],
+        "aspect_ratios": ["16:9", "9:16", "1:1"],
     },
 }
 
 MUSIC_MODEL_ID = "fal-ai/minimax-music"
 
 # fal.ai rasmga stil berish uchun model — Google Gemini 2.5
-# Flash Image ("nano-banana"). MUHIM: FLUX.1 [dev] image-to-image
-# o'rniga shu modelga o'tkazildi, chunki FLUX yuz-identifikatsiyani
-# ataylab saqlamaydi (umumiy diffuziya img2img, "strength"
-# parametri bilan sifat/o'xshashlik muvozanatini topib bo'lmadi —
-# past qiymatda stil sezilmasdi, yuqori qiymatda yuz butunlay
-# boshqa odamga aylanib qolardi). Gemini 2.5 Flash Image esa
-# instruksiya asosida tahrirlaydigan model — u keskin uslub
-# o'zgarishlarida ham odam yuzini ishonchli saqlaydi, shu bilan
-# birga xuddi shu FAL_KEY orqali ishlaydi (yangi kalit shart emas).
+# Flash Image ("nano-banana").
 STYLE_MODEL_ID = "fal-ai/gemini-25-flash-image/edit"
 
-# Har bir stil promptiga qo'shiladigan umumiy sifat-oshiruvchi
-# jumla — natija rasmining o'lchami, o'tkirligi va detallarini
-# yaxshilaydi (loyqa/siqilgan ko'rinishning oldini oladi).
 STYLE_QUALITY_SUFFIX = (
     "Ultra high resolution, extremely detailed, sharp focus, "
     "professional photographic quality, no blur, no compression "
@@ -213,21 +248,23 @@ COIN_COST_VIDEO = 50
 COIN_COST_VOICE = 3
 COIN_COST_MUSIC = 15
 
+# "kling_pro" oddiy "kling"dan qimmatroq fal.ai narxiga ega
+# (native audio + kengroq boshqaruv). Mini App shu qo'shimcha
+# narxni COIN_COST_VIDEO ustiga qo'shadi. Telegram tarafidagi
+# oddiy oqim o'zgarmaydi — u hali ham faqat wan/kling ishlatadi
+# va oddiy COIN_COST_VIDEO'ni to'laydi.
+COIN_COST_VIDEO_PRO_EXTRA = 30
+
+# Rasmdan video (image-to-video) — bitta qo'shimcha kadr
+# yuborilganda olinadigan ustama narx (matndan videoga nisbatan
+# biroz qimmatroq hisoblash — fal.ai narxlari ham shunga yaqin).
+COIN_COST_VIDEO_IMAGE_EXTRA = 10
+
 DAILY_BONUS_AMOUNT = 10
 
 # ------------------------------------------------------------
 # MUHIM: DATA SAQLASH
 # ------------------------------------------------------------
-# Railway'ning standart fayl tizimi VAQTINCHALIKDIR: har yangi
-# deploy (git push) qilinganda konteyner qayta yaratiladi va
-# unga yozilgan barcha fayllar (shu jumladan coins.json) YO'QOLADI.
-# Buning oldini olish uchun ikki yo'l bor:
-#   1) Railway'da xizmatga "Volume" biriktiring (masalan /data
-#      manziliga) va Variables'ga DATA_DIR=/data qo'shing —
-#      shunda quyidagi kod avtomatik o'sha joyga yozadi.
-#   2) Yoki kelajakda coins.json o'rniga haqiqiy bazaga
-#      (Postgres/Redis — Railway'da bepul qo'shiladi) o'ting.
-# DATA_DIR sozlanmasa, avvalgidek joriy papkaga yozadi (xatarli).
 DATA_DIR = os.environ.get("DATA_DIR", ".")
 
 if DATA_DIR != "." and not os.path.exists(DATA_DIR):
@@ -322,13 +359,6 @@ awaiting_style_photo: dict[
 # ============================================================
 # ADMIN'GA XATOLIK YUBORISH (DIAGNOSTIKA)
 # ============================================================
-#
-# MUHIM: foydalanuvchi mobil qurilmada ishlaydi va Railway
-# loglariga kirish qiyin (skrinshot orqali qidirish kerak
-# bo'lgan). Shu funksiya xatolik yuz berganda TO'LIQ
-# traceback'ni to'g'ridan-to'g'ri ADMIN_ID'ning Telegram
-# chatiga yuboradi — shunda Railway'ga umuman kirish shart
-# bo'lmaydi, xatolik aynan bot ichida ko'rinadi.
 
 async def notify_admin_error(
     context: ContextTypes.DEFAULT_TYPE,
@@ -339,36 +369,16 @@ async def notify_admin_error(
 
     tb_text = traceback.format_exc()
 
-    # MUHIM TUZATISH: ba'zi xatolar (masalan fal.ai'ning
-    # validatsiya xabarlari) o'z ichiga yuborilgan rasmning
-    # BUTUN base64 ma'lumotini qaytarib yuborishi mumkin —
-    # bu bir necha o'n ming belgidan iborat bo'lib, xabarni
-    # 3500 belgigacha kesganimizda aynan FOYDALI qism (xato
-    # turi va sababi, odatda oxirida) butunlay ko'milib
-    # ketardi. Shu sabab avval uzun base64-ga o'xshash
-    # qatorlar olib tashlanadi, keyingina uzunlik cheklanadi.
     tb_text = re.sub(
         r"[A-Za-z0-9+/]{200,}={0,2}",
         "<<< base64 ma'lumot olib tashlandi >>>",
         tb_text,
     )
 
-    # Telegram xabar uzunligi ~4096 belgi bilan
-    # cheklangani uchun oxirgi qismini olamiz —
-    # aynan shu joyda xato chiqadi.
     if len(tb_text) > 3500:
         tb_text = "...\n" + tb_text[-3500:]
 
     try:
-
-        # MUHIM TUZATISH: avval parse_mode="Markdown" bilan
-        # yuborilardi — lekin traceback matnida pastki chiziq
-        # (_), yulduzcha (*) kabi belgilar juda ko'p uchraydi
-        # (masalan "_update_fetcher"), bular Telegram'ning
-        # Markdown parserini buzib, xabarni butunlay yuborilmay
-        # qoldirar edi (aynan shu turdagi xato ilgari
-        # show_buy_coins funksiyasida ham uchragan edi).
-        # Oddiy matn (parse_mode'siz) esa har doim yetib boradi.
 
         await context.bot.send_message(
             chat_id=int(ADMIN_ID),
@@ -604,20 +614,6 @@ def is_admin(
 
 
 def escape_markdown_v1(text: str) -> str:
-    """
-    Telegram'ning eski (legacy) Markdown rejimida
-    xavfli belgilarni ("_", "*", "`", "[") oldiga
-    backslash qo'yib xavfsizlantiradi.
-
-    MUHIM: Railway Variables'dagi ADMIN_USERNAME yoki
-    PAYMENT_CARD_OWNER kabi qiymatlarda "_" (pastki chiziq)
-    bo'lsa (masalan "@Aziz_Admin"), bu belgi Markdown'da
-    *kursiv* belgisi sifatida talqin qilinadi va agar juft
-    bo'lmasa, Telegram butun xabarni "Can't parse entities"
-    xatosi bilan rad etadi. Bunday xato ushlanmagani uchun
-    foydalanuvchiga hech qanday javob bormasdi — shu funksiya
-    va quyidagi try/except shu muammoni oldini oladi.
-    """
 
     if text is None:
         return ""
@@ -723,12 +719,6 @@ def video_model_keyboard(
 # TAYYOR STILLAR
 # ============================================================
 
-# MUHIM: stil NOMLARI (6 tilga tarjima qilingan, emoji bilan)
-# endi i18n.py'dagi STYLE_LABELS lug'atida saqlanadi — shu
-# yerda esa faqat rasm generatsiyasi uchun ingliz tilidagi
-# "prompt" qoladi. Nom kerak bo'lganda style_label(key, lang)
-# funksiyasi (i18n.py'dan import qilingan) ishlatiladi. Bitta
-# manba — Mini App va Telegram bot doim bir xil nom ko'rsatadi.
 STYLE_TEMPLATES = {
     "bw_portrait": {
         "prompt": (
@@ -958,17 +948,6 @@ def styles_inline_keyboard(
 async def translate_prompt_to_english(
     text: str,
 ) -> str:
-    """
-    Rasm generatsiyasi promptini ingliz tiliga tarjima qiladi.
-
-    MUHIM: Higgsfield'ning Soul modeli asosan ingliz tilidagi
-    promptlar bilan yaxshi ishlaydi. O'zbek (yoki boshqa)
-    tildagi matnni to'g'ridan-to'g'ri yuborish noto'g'ri yoki
-    mutlaqo aloqasiz natijalarga olib kelishi mumkin edi
-    (masalan "olmos" so'zi "olma" rasmi bilan chalkashtirilgan
-    holat kuzatilgan). Shuning uchun har bir rasm/video
-    so'rovidan oldin promptni ingliz tiliga o'giramiz.
-    """
 
     try:
 
@@ -1010,18 +989,8 @@ async def translate_prompt_to_english(
         return text
 
 
-# fal.ai FLUX.1 [dev] — umumiy maqsadli matndan-rasmga model.
-# MUHIM: Higgsfield Soul (yuqoridagi generate_higgsfield_image)
-# aslida maxsus PORTRET/MODA/LIFESTYLE fotosurat generatori —
-# umumiy narsalar ("olmos", "olma" kabi) so'ralganda ham o'zining
-# portret-fotosurat uslubiga qaytib ketadi. Shuning uchun asosiy
-# "Rasm yaratish" funksiyasi endi shu fal.ai FLUX modeliga
-# o'tkazildi — u har xil mavzularda ancha ishonchli natija beradi.
 IMAGE_MODEL_ID = "fal-ai/flux/dev"
 
-# fal.ai FLUX faqat oldindan belgilangan 6 ta "image_size"
-# qiymatini qabul qiladi — Higgsfield'dagi kabi erkin "3:2"/"2:3"
-# formatini emas. Shu sababli eng yaqin mosini tanlaymiz.
 FAL_ASPECT_TO_IMAGE_SIZE = {
     "1:1": "square_hd",
     "9:16": "portrait_16_9",
@@ -1106,12 +1075,6 @@ async def generate_higgsfield_image(
         "Content-Type": "application/json",
     }
 
-    # MUHIM TUZATISH (2-marta): "1.5k"/"2k" qiymatlari
-    # Higgsfield'ning veb-interfeysi (Soul 2.0 GUI) uchun,
-    # BIZ ishlatayotgan REST API endpointi uchun EMAS edi —
-    # bu xato so'rovni butunlay buzib, rasm yaratilishini
-    # to'xtatib qo'ygan edi. Rasmiy REST API hujjatidagi
-    # tasdiqlangan misolga qaytarildi: "720p".
     payload = {
         "prompt": english_prompt,
         "aspect_ratio": aspect_ratio,
@@ -1181,31 +1144,95 @@ async def generate_higgsfield_image(
     return None
 
 
-# ============================================================
-# TELEGRAM RASMINI YUKLAB OLISH
-# ============================================================
-
 async def generate_fal_video(
     prompt: str,
-    model_id: str,
+    model_key: str,
+    aspect_ratio: str | None = None,
+    duration: str | None = None,
+    image_bytes: bytes | None = None,
 ) -> str | None:
     """
     fal.ai orqali video yaratadi (qayta ishlatiladigan —
     Telegram handler ham, Mini App API ham shu funksiyani
     chaqiradi).
+
+    MUHIM (Mini App yangilanishi): funksiya endi to'g'ridan-
+    to'g'ri fal.ai model_id emas, balki VIDEO_MODELS lug'atidagi
+    KALITNI (masalan "wan", "kling", "kling_pro") qabul qiladi —
+    shunda har bir model qaysi qo'shimcha parametrlarni
+    (aspect_ratio, duration) qo'llab-quvvatlashini o'zi hal
+    qiladi va fal.ai'ga faqat mos parametrlarni yuboradi
+    ("wan" masalan bularni umuman qabul qilmaydi).
+
+    Agar image_bytes berilsa VA tanlangan model rasmdan video
+    (image-to-video) endpointiga ega bo'lsa — rasm birinchi
+    kadr sifatida ishlatiladi. Rasm hech qanday CDN'ga
+    yuklanmasdan, apply_fal_ai_style funksiyasidagi kabi
+    to'g'ridan-to'g'ri base64 "data URL" sifatida beriladi.
     """
+
+    model_info = VIDEO_MODELS.get(model_key)
+
+    if model_info is None:
+        return None
 
     english_prompt = await translate_prompt_to_english(
         prompt
     )
 
+    use_image = bool(
+        image_bytes
+        and model_info.get("image_model_id")
+    )
+
+    if use_image:
+
+        target_model_id = model_info["image_model_id"]
+
+        base64_data = base64.b64encode(
+            image_bytes
+        ).decode("ascii")
+
+        arguments = {
+            "prompt": english_prompt,
+            "image_url": (
+                f"data:image/jpeg;base64,{base64_data}"
+            ),
+        }
+
+    else:
+
+        target_model_id = model_info["model_id"]
+
+        arguments = {
+            "prompt": english_prompt,
+        }
+
+    allowed_durations = model_info.get("durations")
+
+    if (
+        duration
+        and allowed_durations
+        and duration in allowed_durations
+    ):
+        arguments["duration"] = duration
+
+    allowed_aspect_ratios = model_info.get(
+        "aspect_ratios"
+    )
+
+    if (
+        aspect_ratio
+        and allowed_aspect_ratios
+        and aspect_ratio in allowed_aspect_ratios
+    ):
+        arguments["aspect_ratio"] = aspect_ratio
+
     def run_generation():
 
         return fal_client.subscribe(
-            model_id,
-            arguments={
-                "prompt": english_prompt
-            },
+            target_model_id,
+            arguments=arguments,
         )
 
     result = await asyncio.to_thread(
@@ -1238,9 +1265,6 @@ async def generate_fal_video(
 async def generate_fal_music(
     prompt: str,
 ) -> str | None:
-    """
-    fal.ai orqali musiqa yaratadi (qayta ishlatiladigan).
-    """
 
     english_prompt = await translate_prompt_to_english(
         prompt
@@ -1307,28 +1331,6 @@ async def apply_fal_ai_style(
     image_bytes: bytes,
     style_prompt: str,
 ) -> str | None:
-    """
-    Telegram rasmini Google Gemini 2.5 Flash Image
-    ("nano-banana") orqali stil beradi.
-
-    Model:
-        fal-ai/gemini-25-flash-image/edit
-
-    Parametrlar:
-        image_urls (massiv — base64 data URL sifatida)
-        prompt
-
-    MUHIM: avval fal-ai/flux/dev/image-to-image ishlatilgan
-    edi, lekin u umumiy diffuziya img2img modeli bo'lgani
-    uchun yuz-identifikatsiyani ishonchli saqlay olmadi —
-    "strength" past bo'lsa stil sezilmasdi, yuqori bo'lsa yuz
-    butunlay boshqa odamga aylanib qolardi. Gemini 2.5 Flash
-    Image esa instruksiya asosida tahrirlaydigan model bo'lib,
-    keskin uslub o'zgarishlarida ham asl yuzni ishonchli
-    saqlaydi, shuning uchun bu modelga o'tkazildi. Rasm CDN'ga
-    yuklanmasdan (oldingi DNS muammosining oldini olish uchun),
-    to'g'ridan-to'g'ri base64 "data URL" sifatida beriladi.
-    """
 
     def run_generation():
 
@@ -1343,16 +1345,7 @@ async def apply_fal_ai_style(
         result = fal_client.subscribe(
             STYLE_MODEL_ID,
             arguments={
-                # MUHIM: bu model "image_url" (birlik) emas,
-                # "image_urls" (ko'plik, massiv) argumentini
-                # kutadi.
                 "image_urls": [image_url],
-                # MUHIM: STYLE_QUALITY_SUFFIX har bir stil
-                # promptiga qo'shiladi — bu natija rasmining
-                # sifatini (o'lchami, o'tkirligi, detallari)
-                # oshiradi. Bitta markazlashtirilgan joyda
-                # qo'shilgani uchun har bir stilni alohida
-                # tahrirlash shart emas.
                 "prompt": f"{style_prompt} {STYLE_QUALITY_SUFFIX}",
             },
         )
@@ -1626,13 +1619,6 @@ async def show_buy_coins(
         )
 
     except Exception as e:
-
-        # MUHIM: avval bu yerda try/except yo'q edi —
-        # xato (masalan Markdown parse xatosi) hech
-        # qanday javobsiz "yutilib" ketardi va foydalanuvchi
-        # tugmani necha marta bossa ham hech narsa
-        # ko'rmasdi. Endi xato Railway logiga yoziladi va
-        # foydalanuvchi kamida oddiy matn ko'radi.
 
         logger.error(
             f"show_buy_coins xatosi: {e}"
@@ -2042,14 +2028,6 @@ async def process_style_photo(
         photo.file_id
     )
 
-    # MUHIM TUZATISH: python-telegram-bot kutubxonasining
-    # hozirgi versiyasida tg_file.file_path allaqachon TO'LIQ
-    # URL ("https://api.telegram.org/file/bot.../photos/..."
-    # ko'rinishida) qaytaradi — avvalgi kod uni yana bir marta
-    # asosiy URL bilan qo'shib qurardi, natijada manzil ikki
-    # marta takrorlanib, 404 xatosiga olib kelardi. Endi
-    # file_path allaqachon to'liq URL bo'lsa, o'sha ishlatiladi;
-    # aks holda (eski uslub, nisbiy yo'l) avvalgidek quriladi.
     if tg_file.file_path.startswith("http"):
         image_url = tg_file.file_path
     else:
@@ -2116,14 +2094,6 @@ async def process_style_photo(
         )
 
     except Exception:
-
-        # MUHIM: logger.exception butun traceback'ni
-        # Railway logiga yozadi (avval faqat "{e}" — bitta
-        # qator — yozilardi, aynan qaysi qatorda yorilgani
-        # ko'rinmasdi). Qo'shimcha ravishda shu traceback
-        # to'g'ridan-to'g'ri admin'ga Telegram xabari
-        # sifatida yuboriladi — Railway'ga kirish shart
-        # bo'lmaydi.
 
         logger.exception(
             "fal.ai stil qo'llash xatosi:"
@@ -2700,49 +2670,15 @@ async def generate_video_from_prompt(
 
     try:
 
-        def run_generation():
-
-            return fal_client.subscribe(
-                model_info["model_id"],
-                arguments={
-                    "prompt": prompt
-                },
-            )
-
-        result = await asyncio.to_thread(
-            run_generation
+        video_url = await generate_fal_video(
+            prompt,
+            model_key,
         )
-
-        video_url = None
-
-        if isinstance(
-            result,
-            dict,
-        ):
-
-            if (
-                "video" in result
-                and isinstance(
-                    result["video"],
-                    dict,
-                )
-            ):
-
-                video_url = result[
-                    "video"
-                ].get("url")
-
-            elif "video_url" in result:
-
-                video_url = result[
-                    "video_url"
-                ]
 
         if not video_url:
 
             raise ValueError(
-                "Video URL topilmadi. "
-                f"Natija: {result}"
+                "Video URL topilmadi."
             )
 
         new_balance = change_balance(
@@ -2916,10 +2852,6 @@ async def handle_message(
 
     lang = get_lang(chat_id)
 
-    # --------------------------------------------------------
-    # MENYU TUGMALARI
-    # --------------------------------------------------------
-
     if user_text == t(
         lang,
         "btn_new_chat",
@@ -3067,10 +2999,6 @@ async def handle_message(
 
         return
 
-    # --------------------------------------------------------
-    # VIDEO MODEL TANLASH
-    # --------------------------------------------------------
-
     if awaiting_video_model_choice.get(
         chat_id
     ):
@@ -3115,10 +3043,6 @@ async def handle_message(
 
             return
 
-    # --------------------------------------------------------
-    # VIDEO PROMPT
-    # --------------------------------------------------------
-
     if chat_id in awaiting_video_prompt:
 
         model_key = awaiting_video_prompt.pop(
@@ -3133,10 +3057,6 @@ async def handle_message(
         )
 
         return
-
-    # --------------------------------------------------------
-    # IMAGE PROMPT
-    # --------------------------------------------------------
 
     if awaiting_image_prompt.get(
         chat_id
@@ -3154,10 +3074,6 @@ async def handle_message(
 
         return
 
-    # --------------------------------------------------------
-    # VOICE TEXT
-    # --------------------------------------------------------
-
     if awaiting_voice_text.get(
         chat_id
     ):
@@ -3174,10 +3090,6 @@ async def handle_message(
 
         return
 
-    # --------------------------------------------------------
-    # MUSIC PROMPT
-    # --------------------------------------------------------
-
     if awaiting_music_prompt.get(
         chat_id
     ):
@@ -3193,10 +3105,6 @@ async def handle_message(
         )
 
         return
-
-    # --------------------------------------------------------
-    # ODDIY CLAUDE CHAT
-    # --------------------------------------------------------
 
     if get_balance(chat_id) < COIN_COST_TEXT:
 
@@ -3340,13 +3248,6 @@ async def handle_message(
 # ============================================================
 
 def build_application():
-    """
-    Telegram bot Application obyektini yaratadi va barcha
-    handlerlarni ro'yxatdan o'tkazadi, lekin ISHGA TUSHIRMAYDI
-    (run_polling chaqirmaydi). Bu funksiya alohida ham
-    (bot.py orqali), ham server.py (bot + Mini App veb-server
-    birga) orqali qayta ishlatiladi.
-    """
 
     missing = []
 
@@ -3400,10 +3301,6 @@ def build_application():
         .build()
     )
 
-    # --------------------------------------------------------
-    # COMMAND HANDLERS
-    # --------------------------------------------------------
-
     app.add_handler(
         CommandHandler(
             "start",
@@ -3453,10 +3350,6 @@ def build_application():
         )
     )
 
-    # --------------------------------------------------------
-    # CALLBACK HANDLERS
-    # --------------------------------------------------------
-
     app.add_handler(
         CallbackQueryHandler(
             style_selected_callback,
@@ -3471,20 +3364,12 @@ def build_application():
         )
     )
 
-    # --------------------------------------------------------
-    # PHOTO HANDLER
-    # --------------------------------------------------------
-
     app.add_handler(
         MessageHandler(
             filters.PHOTO,
             process_style_photo,
         )
     )
-
-    # --------------------------------------------------------
-    # TEXT HANDLER
-    # --------------------------------------------------------
 
     app.add_handler(
         MessageHandler(
@@ -3509,10 +3394,6 @@ def main():
 
     app.run_polling()
 
-
-# ============================================================
-# START
-# ============================================================
 
 if __name__ == "__main__":
     main()
