@@ -673,6 +673,42 @@ if (videoFrameInput) {
     const reader = new FileReader();
     reader.onload = () => {
       videoFramePreviewImg.src = reader.result;
+
+      // MUHIM TUZATISH (2-marta): HTML'dagi inline style="" ba'zan
+      // yetarli bo'lmasligi mumkin — agar style.css'da eski/keshlangan
+      // qoida "!important" bilan yozilgan bo'lsa, oddiy inline style
+      // undan yutqazishi mumkin edi. setProperty(..., "important")
+      // esa CSS ierarxiyasида ENG YUQORI ustuvorlikka ega — hech
+      // qanday tashqi CSS (hatto !important bilan yozilgan bo'lsa
+      // ham) buni bosib keta olmaydi. Shu sababli endi o'lcham
+      // to'g'ridan-to'g'ri shu yerda, ishga tushish vaqtida
+      // majburlanadi.
+      const forceStyle = (el, props) => {
+        Object.entries(props).forEach(([prop, value]) => {
+          el.style.setProperty(prop, value, "important");
+        });
+      };
+
+      forceStyle(videoFramePreviewWrap, {
+        position: "relative",
+        width: "56px",
+        height: "56px",
+        "max-width": "56px",
+        "max-height": "56px",
+        flex: "0 0 56px",
+        display: "block",
+      });
+
+      forceStyle(videoFramePreviewImg, {
+        display: "block",
+        width: "56px",
+        height: "56px",
+        "max-width": "56px",
+        "max-height": "56px",
+        "object-fit": "cover",
+        "border-radius": "10px",
+      });
+
       videoFramePreviewWrap.classList.remove("hidden");
       videoFrameBtn.classList.add("hidden");
     };
