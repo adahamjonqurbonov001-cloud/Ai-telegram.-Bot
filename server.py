@@ -47,6 +47,8 @@ from bot import (
     COIN_COST_STYLE,
     COIN_COST_TEXT,
     COIN_COST_VIDEO,
+    COIN_COST_VIDEO_IMAGE_EXTRA,
+    COIN_COST_VIDEO_PRO_EXTRA,
     COIN_COST_VOICE,
     DEFAULT_TTS_VOICE,
     MAX_HISTORY_MESSAGES,
@@ -92,10 +94,6 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # ADMIN'GA XATOLIK YUBORISH (DIAGNOSTIKA)
 # ============================================================
-#
-# bot.py'dagi notify_admin_error bilan bir xil maqsadda —
-# lekin bu yerda `context` yo'q, shuning uchun to'g'ridan-to'g'ri
-# telegram_application.bot orqali yuboradi (pastda aniqlanadi).
 
 async def notify_admin_error_miniapp(title: str):
 
@@ -107,9 +105,6 @@ async def notify_admin_error_miniapp(title: str):
 
     tb_text = traceback.format_exc()
 
-    # bot.py'dagi notify_admin_error bilan bir xil sabab —
-    # base64 rasm ma'lumoti xato matniga tushib qolsa, foydali
-    # qismni ko'milib ketishining oldini olamiz.
     tb_text = re.sub(
         r"[A-Za-z0-9+/]{200,}={0,2}",
         "<<< base64 ma'lumot olib tashlandi >>>",
@@ -120,12 +115,6 @@ async def notify_admin_error_miniapp(title: str):
         tb_text = "...\n" + tb_text[-3500:]
 
     try:
-
-        # MUHIM TUZATISH: parse_mode="Markdown" olib tashlandi —
-        # traceback matnidagi "_" va "*" belgilari Telegram
-        # Markdown parserini buzib, xabarni butunlay yubormay
-        # qo'yardi (bot.py'dagi notify_admin_error bilan bir xil
-        # xato). Oddiy matn har doim yetib boradi.
 
         await telegram_application.bot.send_message(
             chat_id=int(ADMIN_ID),
@@ -146,17 +135,6 @@ async def notify_admin_error_miniapp(title: str):
 # ============================================================
 # TELEGRAM initData TEKSHIRUVI
 # ============================================================
-#
-# MUHIM: Mini App frontendidan (app.js) kelgan har bir so'rov
-# o'zi bilan Telegram bergan "initData" satrini olib keladi.
-# Bu satr Telegram tomonidan HMAC-SHA256 bilan imzolangan.
-# Agar bu imzoni TEKSHIRMASAK, istalgan odam o'zining
-# chat_id'ini soxtalashtirib, boshqa birovning coin balansidan
-# bepul foydalanishi mumkin bo'lardi. Shu sababli har bir
-# so'rovda bu funksiya chaqiriladi.
-# Rasmiy algoritm:
-# https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
-
 
 def verify_telegram_init_data(init_data: str) -> dict:
 
@@ -227,7 +205,6 @@ def verify_telegram_init_data(init_data: str) -> dict:
         )
     )
 
-    # 24 soatdan eski initData qabul qilinmaydi
     if time.time() - auth_date > 86400:
         raise HTTPException(
             status_code=403,
@@ -259,9 +236,6 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
-# Bot ishga tushgach shu global o'zgaruvchiga yoziladi —
-# shunda /api/apply-style natijani to'g'ridan-to'g'ri
-# foydalanuvchi chatiga yubora oladi.
 telegram_application = None
 
 
@@ -295,6 +269,36 @@ async def api_list_styles(
             ),
         }
         for key in STYLE_TEMPLATES.keys()
+    ]
+
+
+# ------------------------------------------------------------
+# MUHIM (YANGI): Mini App'dagi video sozlamalari menyusi
+# (model / format / davomiylik / rasmdan video) VIDEO_MODELS
+# lug'atidan to'g'ridan-to'g'ri o'qiladi — shunda bot.py'da
+# yangi model qo'shilsa, frontendni alohida yangilash shart
+# bo'lmaydi (faqat shu ro'yxatdan chiqadi).
+@api.get("/api/video-models")
+async def api_list_video_models(
+    lang: str = DEFAULT_LANGUAGE,
+):
+
+    return [
+        {
+            "key": key,
+            "label": info["label"],
+            "durations": info.get("durations"),
+            "aspect_ratios": info.get("aspect_ratios"),
+            "supports_image": bool(
+                info.get("image_model_id")
+            ),
+            "extra_cost": (
+                COIN_COST_VIDEO_PRO_EXTRA
+                if key == "kling_pro"
+                else 0
+            ),
+        }
+        for key, info in VIDEO_MODELS.items()
     ]
 
 
@@ -379,12 +383,6 @@ async def api_apply_style(
 
     except Exception:
 
-        # MUHIM: logger.exception to'liq traceback'ni
-        # Railway logiga yozadi (avval faqat "{e}" — bitta
-        # qator — yozilardi). Qo'shimcha ravishda shu
-        # traceback to'g'ridan-to'g'ri admin'ga Telegram
-        # xabari sifatida yuboriladi.
-
         logger.exception(
             f"Mini App stil xatosi ({style_id}):"
         )
@@ -409,8 +407,6 @@ async def api_apply_style(
         -COIN_COST_STYLE,
     )
 
-    # Natijani foydalanuvchi chatiga ham yuboramiz —
-    # shunda Mini App yopilsa ham natija yo'qolmaydi.
     if telegram_application is not None:
 
         try:
@@ -427,9 +423,6 @@ async def api_apply_style(
 
         except Exception as e:
 
-            # Chatga yuborib bo'lmasa ham, Mini App natijani
-            # o'zida ko'rsatadi — foydalanuvchi baribir
-            # natijani ko'radi.
             logger.warning(
                 "Natijani chatga yuborib "
                 f"bo'lmadi: {e}"
@@ -616,7 +609,28 @@ async def api_generate_video(
     init_data: str = Form(...),
     prompt: str = Form(...),
     model_key: str = Form("wan"),
+    aspect_ratio: str = Form(None),
+    duration: str = Form(None),
+    frame: UploadFile = None,
 ):
+    """
+    MUHIM (YANGI): endi shu endpoint quyidagilarni qo'shimcha
+    qabul qiladi:
+        - aspect_ratio  — "16:9" / "9:16" / "1:1" (model
+          qo'llab-quvvatlamasa e'tiborsiz qoldiriladi)
+        - duration      — "5" / "10" soniya (xuddi shunday)
+        - frame         — ixtiyoriy rasm fayli; berilsa VA
+          model rasmdan video (image-to-video) endpointiga
+          ega bo'lsa, video shu rasmdan (birinchi kadr
+          sifatida) yaratiladi
+
+    Narx: model "kling_pro" bo'lsa — COIN_COST_VIDEO_PRO_EXTRA
+    qo'shiladi; "frame" (rasmdan video) ishlatilsa —
+    COIN_COST_VIDEO_IMAGE_EXTRA qo'shiladi. Ikkalasi ham
+    generatsiya BOSHLANISHIDAN OLDIN balansdan yechiladi —
+    xato bo'lsa hech narsa yechilmaydi (pastdagi try/except'ga
+    qarang).
+    """
 
     user = verify_telegram_init_data(
         init_data
@@ -632,26 +646,47 @@ async def api_generate_video(
             detail=t(lang, "unknown_video_model"),
         )
 
-    if get_balance(chat_id) < COIN_COST_VIDEO:
+    model_info = VIDEO_MODELS[model_key]
+
+    image_bytes = None
+
+    if frame is not None:
+
+        if not model_info.get("image_model_id"):
+            raise HTTPException(
+                status_code=400,
+                detail=t(lang, "video_image_not_supported"),
+            )
+
+        image_bytes = await frame.read()
+
+    total_cost = COIN_COST_VIDEO
+
+    if model_key == "kling_pro":
+        total_cost += COIN_COST_VIDEO_PRO_EXTRA
+
+    if image_bytes is not None:
+        total_cost += COIN_COST_VIDEO_IMAGE_EXTRA
+
+    if get_balance(chat_id) < total_cost:
         raise HTTPException(
             status_code=402,
             detail=t(
                 lang,
                 "insufficient_coins",
-                cost=COIN_COST_VIDEO,
+                cost=total_cost,
                 balance=get_balance(chat_id),
             ),
         )
-
-    model_id = VIDEO_MODELS[model_key][
-        "model_id"
-    ]
 
     try:
 
         video_url = await generate_fal_video(
             prompt,
-            model_id,
+            model_key,
+            aspect_ratio=aspect_ratio,
+            duration=duration,
+            image_bytes=image_bytes,
         )
 
     except Exception:
@@ -677,12 +712,13 @@ async def api_generate_video(
 
     new_balance = change_balance(
         chat_id,
-        -COIN_COST_VIDEO,
+        -total_cost,
     )
 
     return {
         "video_url": video_url,
         "balance": new_balance,
+        "cost": total_cost,
     }
 
 
@@ -869,10 +905,6 @@ api.mount(
 
 
 async def run_bot_polling():
-    """
-    bot.py'dagi Application'ni FastAPI bilan bir xil asyncio
-    tsiklida polling rejimida ishga tushiradi.
-    """
 
     global telegram_application
 
@@ -890,19 +922,10 @@ async def run_bot_polling():
             "Mini App servera birga ishga tushdi."
         )
 
-        # Jarayon tirik turishi uchun cheksiz kutish.
-        # FastAPI/uvicorn HTTP so'rovlarini alohida
-        # qabul qilaveradi.
         await asyncio.Event().wait()
 
     except Exception:
 
-        # MUHIM: bu try/except bo'lmasa, bot ishga
-        # tushishida xato chiqsa (masalan noto'g'ri token,
-        # tarmoq xatosi va h.k.), bu xato hech qayerga
-        # yozilmasdan "yutilib" ketardi — bot esa
-        # javob bermay qolardi, Railway logida esa
-        # hech narsa ko'rinmasdi.
         logger.exception(
             "🔴 Bot polling ishga tushirishda "
             "XATO — bot xabarlarga javob "
@@ -919,12 +942,6 @@ async def run_bot_polling():
             await telegram_application.shutdown()
 
 
-# MUHIM: yaratilgan asyncio vazifasiga kuchli (doimiy)
-# havola saqlanadi. Agar bu global o'zgaruvchida
-# saqlanmasa, Python'ning chiqindi yig'uvchisi vazifani
-# kutilmaganda to'xtatib qo'yishi mumkin edi — bu ham
-# "bot sababsiz javob bermay qoladi" muammosining
-# ehtimoliy manbai edi.
 _bot_polling_task = None
 
 
@@ -966,4 +983,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-            )
+        )
