@@ -889,9 +889,31 @@ WEBAPP_DIR = os.path.join(
     "webapp",
 )
 
+
+# MUHIM (YANGI): Telegram Mini App'ning ichki WebView'i (ayniqsa
+# Android'da) index.html/app.js/style.css'ni juda "yopishqoq"
+# keshlaydi — hatto Mini App'ni to'liq yopib qayta ochganda ham
+# eski versiya ko'rsatilishi mumkin edi. Standart StaticFiles
+# hech qanday Cache-Control header qo'ymaydi, shuning uchun
+# brauzer o'zicha (heuristik) keshlashga qaror qilardi. Endi har
+# bir statik fayl "hech qachon keshlama, har doim qayta tekshir"
+# degan header bilan yuboriladi — shunda kelajakda fayl
+# yangilansa, foydalanuvchi Mini App'ni qayta ochganda darhol
+# eng so'nggi versiyani ko'radi.
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = (
+            "no-cache, no-store, must-revalidate"
+        )
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+
 api.mount(
     "/",
-    StaticFiles(
+    NoCacheStaticFiles(
         directory=WEBAPP_DIR,
         html=True,
     ),
