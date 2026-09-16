@@ -36,8 +36,11 @@ const MINIAPP_I18N = {
     helpNote: "Har bir amal balansingizdan coin yechadi — narxlarni pastdagi balans chipida ko'rasiz.",
     formatLabel: "Format",
     modelLabel: "Model",
-    videoModelWan: "🟢 Wan (arzon)",
-    videoModelKling: "🔵 Kling (sifatli)",
+    durationLabel: "Davomiylik",
+    frameLabel: "Boshlang'ich rasm (ixtiyoriy)",
+    frameButton: "📷 Rasm tanlash",
+    frameRemove: "✕ O'chirish",
+    frameNotSupported: "Bu model rasmdan video yaratishni qo'llab-quvvatlamaydi.",
     modeText: "💬 Matn",
     modeImage: "🎨 Rasm",
     modeVideo: "🎬 Video",
@@ -79,8 +82,11 @@ const MINIAPP_I18N = {
     helpNote: "Каждое действие списывает монеты с баланса — цены смотрите в чипе баланса внизу.",
     formatLabel: "Формат",
     modelLabel: "Модель",
-    videoModelWan: "🟢 Wan (дешевле)",
-    videoModelKling: "🔵 Kling (качество)",
+    durationLabel: "Длительность",
+    frameLabel: "Начальное изображение (необязательно)",
+    frameButton: "📷 Выбрать фото",
+    frameRemove: "✕ Убрать",
+    frameNotSupported: "Эта модель не поддерживает создание видео из фото.",
     modeText: "💬 Текст",
     modeImage: "🎨 Фото",
     modeVideo: "🎬 Видео",
@@ -119,11 +125,14 @@ const MINIAPP_I18N = {
     helpLineMusic: "🎵 Музыка — сипаттамадан музыка жасайды.",
     helpLineVoice: "🔊 Дауыс — мәтініңізді дауысқа айналдырады.",
     helpLineStyles: "🖼 Дайын стильдер — суретіңізге дайын стиль қолданады.",
-    helpNote: "Әрбір әрекет балансыңыздан тиын алады — бағаларды төмендегі баланс чипінен көресіз.",
+    helpNote: "Әрбір әрекет балансыңыздан тиын алады — бағаларды төмендегі баланс чибинен көресіз.",
     formatLabel: "Формат",
     modelLabel: "Модель",
-    videoModelWan: "🟢 Wan (арзан)",
-    videoModelKling: "🔵 Kling (сапалы)",
+    durationLabel: "Ұзақтығы",
+    frameLabel: "Бастапқы сурет (міндетті емес)",
+    frameButton: "📷 Сурет таңдау",
+    frameRemove: "✕ Өшіру",
+    frameNotSupported: "Бұл модель фотодан видео жасауды қолдамайды.",
     modeText: "💬 Мәтін",
     modeImage: "🎨 Сурет",
     modeVideo: "🎬 Видео",
@@ -165,8 +174,11 @@ const MINIAPP_I18N = {
     helpNote: "Ҳар амал аз балансатон танга мегирад — нархҳоро дар чипи баланс дар поён мебинед.",
     formatLabel: "Формат",
     modelLabel: "Модел",
-    videoModelWan: "🟢 Wan (арзон)",
-    videoModelKling: "🔵 Kling (босифат)",
+    durationLabel: "Давомнокӣ",
+    frameLabel: "Расми ибтидоӣ (ихтиёрӣ)",
+    frameButton: "📷 Интихоби расм",
+    frameRemove: "✕ Хориҷ кардан",
+    frameNotSupported: "Ин модел сохтани видео аз расмро дастгирӣ намекунад.",
     modeText: "💬 Матн",
     modeImage: "🎨 Расм",
     modeVideo: "🎬 Видео",
@@ -208,8 +220,11 @@ const MINIAPP_I18N = {
     helpNote: "Ар бир аракет балансыңыздан монета алат — баалар төмөндөгү баланс чибинде көрсөтүлөт.",
     formatLabel: "Формат",
     modelLabel: "Модель",
-    videoModelWan: "🟢 Wan (арзан)",
-    videoModelKling: "🔵 Kling (сапаттуу)",
+    durationLabel: "Узактыгы",
+    frameLabel: "Баштапкы сүрөт (милдеттүү эмес)",
+    frameButton: "📷 Сүрөт тандоо",
+    frameRemove: "✕ Өчүрүү",
+    frameNotSupported: "Бул модель сүрөттөн видео жасоону колдобойт.",
     modeText: "💬 Текст",
     modeImage: "🎨 Сүрөт",
     modeVideo: "🎬 Видео",
@@ -251,8 +266,11 @@ const MINIAPP_I18N = {
     helpNote: "Every action deducts coins from your balance — check prices in the balance chip below.",
     formatLabel: "Format",
     modelLabel: "Model",
-    videoModelWan: "🟢 Wan (cheaper)",
-    videoModelKling: "🔵 Kling (higher quality)",
+    durationLabel: "Duration",
+    frameLabel: "Starting image (optional)",
+    frameButton: "📷 Choose photo",
+    frameRemove: "✕ Remove",
+    frameNotSupported: "This model doesn't support image-to-video.",
     modeText: "💬 Text",
     modeImage: "🎨 Image",
     modeVideo: "🎬 Video",
@@ -306,6 +324,17 @@ const micBtn = document.getElementById("micBtn");
 const modeRow = document.getElementById("modeRow");
 const imageSettingsRow = document.getElementById("imageSettingsRow");
 const videoModelRow = document.getElementById("videoModelRow");
+const videoModelChips = document.getElementById("videoModelChips");
+const videoFormatRow = document.getElementById("videoFormatRow");
+const videoAspectRow = document.getElementById("videoAspectRow");
+const videoDurationRow = document.getElementById("videoDurationRow");
+const videoDurationChips = document.getElementById("videoDurationChips");
+const videoFrameRow = document.getElementById("videoFrameRow");
+const videoFrameBtn = document.getElementById("videoFrameBtn");
+const videoFrameInput = document.getElementById("videoFrameInput");
+const videoFramePreviewWrap = document.getElementById("videoFramePreviewWrap");
+const videoFramePreviewImg = document.getElementById("videoFramePreviewImg");
+const videoFrameRemoveBtn = document.getElementById("videoFrameRemoveBtn");
 const aspectRatioRow = document.getElementById("aspectRatioRow");
 
 const balanceValue = document.getElementById("balanceValue");
@@ -330,8 +359,9 @@ const helpLineStyles = document.getElementById("helpLineStyles");
 const helpNote = document.getElementById("helpNote");
 const formatLabel = document.getElementById("formatLabel");
 const modelLabel = document.getElementById("modelLabel");
-const videoModelWanBtn = document.getElementById("videoModelWanBtn");
-const videoModelKlingBtn = document.getElementById("videoModelKlingBtn");
+const videoFormatLabel = document.getElementById("videoFormatLabel");
+const durationLabel = document.getElementById("durationLabel");
+const frameLabel = document.getElementById("frameLabel");
 const modeTextBtn = document.getElementById("modeTextBtn");
 const modeImageBtn = document.getElementById("modeImageBtn");
 const modeVideoBtn = document.getElementById("modeVideoBtn");
@@ -343,9 +373,22 @@ const coinUnitLabel = document.getElementById("coinUnitLabel");
 
 let currentMode = "text";
 let currentAspect = "1:1";
-let currentVideoModel = "wan";
 let selectedStyleId = null;
 let selectedStyleLabel = "";
+
+// MUHIM (YANGI): video sozlamalari uchun holat. videoModels —
+// /api/video-models'dan yuklanadigan ro'yxat (bot.py'dagi
+// VIDEO_MODELS bilan bir xil). currentVideoModel — tanlangan
+// model kaliti ("wan" / "kling" / "kling_pro" va h.k. — ro'yxat
+// o'zgarsa ham kod o'zgarmaydi). currentVideoAspect/Duration —
+// shu model qo'llab-quvvatlasa ishlatiladigan qo'shimcha
+// parametrlar. selectedVideoFrameFile — rasmdan video uchun
+// tanlangan boshlang'ich kadr (faqat model qo'llasa).
+let videoModels = [];
+let currentVideoModel = "wan";
+let currentVideoAspect = null;
+let currentVideoDuration = null;
+let selectedVideoFrameFile = null;
 
 // ============ TARJIMALARNI QO'LLASH ============
 
@@ -381,8 +424,11 @@ function applyTranslations() {
 
   if (formatLabel) formatLabel.textContent = tr("formatLabel");
   if (modelLabel) modelLabel.textContent = tr("modelLabel");
-  if (videoModelWanBtn) videoModelWanBtn.textContent = tr("videoModelWan");
-  if (videoModelKlingBtn) videoModelKlingBtn.textContent = tr("videoModelKling");
+  if (videoFormatLabel) videoFormatLabel.textContent = tr("formatLabel");
+  if (durationLabel) durationLabel.textContent = tr("durationLabel");
+  if (frameLabel) frameLabel.textContent = tr("frameLabel");
+  if (videoFrameBtn) videoFrameBtn.textContent = tr("frameButton");
+  if (videoFrameRemoveBtn) videoFrameRemoveBtn.textContent = "✕";
 
   if (modeTextBtn) modeTextBtn.textContent = tr("modeText");
   if (modeImageBtn) modeImageBtn.textContent = tr("modeImage");
@@ -403,6 +449,7 @@ function applyTranslations() {
     recognition.lang = tr("speechLang");
   }
 
+  renderVideoModelChips();
   setMode(currentMode);
 }
 
@@ -448,6 +495,197 @@ navItems.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 
+// ============ VIDEO MODEL / FORMAT / DAVOMIYLIK / KADR ============
+//
+// MUHIM (YANGI): bu bo'lim /api/video-models'dan kelgan ro'yxatga
+// qarab video sozlamalari panelini quradi. Har bir model o'zining
+// aspect_ratios/durations/supports_image xususiyatlariga ega —
+// shu sabab tanlangan modelga qarab format/davomiylik/kadr
+// qatorlari ko'rsatiladi yoki yashiriladi (masalan Wan'da bular
+// umuman yo'q, Kling'da bor).
+
+async function loadVideoModels() {
+  try {
+    const resp = await fetch("/api/video-models?lang=" + encodeURIComponent(currentLang));
+    videoModels = await resp.json();
+
+    if (videoModels.length && !videoModels.find((m) => m.key === currentVideoModel)) {
+      currentVideoModel = videoModels[0].key;
+    }
+  } catch (e) {
+    console.error("Video modellarni yuklab bo'lmadi", e);
+    videoModels = [];
+  }
+}
+
+function getCurrentVideoModelInfo() {
+  return videoModels.find((m) => m.key === currentVideoModel) || null;
+}
+
+function renderVideoModelChips() {
+  if (!videoModelChips) return;
+
+  videoModelChips.innerHTML = "";
+
+  videoModels.forEach((model) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "mini-chip" + (model.key === currentVideoModel ? " active" : "");
+    chip.dataset.videoModel = model.key;
+
+    // Model qo'shimcha narx talab qilsa (masalan "kling_pro"),
+    // shuni chip ustida ko'rsatamiz — foydalanuvchi tanlashdan
+    // oldin biladi.
+    const extra = model.extra_cost
+      ? ` (+${model.extra_cost} ${tr("coinUnit")})`
+      : "";
+
+    chip.textContent = model.label + extra;
+
+    videoModelChips.appendChild(chip);
+  });
+
+  updateVideoControlsForModel();
+}
+
+function updateVideoControlsForModel() {
+  const info = getCurrentVideoModelInfo();
+
+  // --- Format (aspect_ratio) ---
+  const aspectRatios = info && info.aspect_ratios;
+
+  if (videoFormatRow) {
+    videoFormatRow.classList.toggle("hidden", !aspectRatios || !aspectRatios.length);
+  }
+
+  if (aspectRatios && aspectRatios.length) {
+    if (!aspectRatios.includes(currentVideoAspect)) {
+      currentVideoAspect = aspectRatios[0];
+    }
+
+    videoAspectRow.querySelectorAll("[data-video-aspect]").forEach((chip) => {
+      const supported = aspectRatios.includes(chip.dataset.videoAspect);
+      chip.classList.toggle("hidden", !supported);
+      chip.classList.toggle("active", chip.dataset.videoAspect === currentVideoAspect);
+    });
+  } else {
+    currentVideoAspect = null;
+  }
+
+  // --- Davomiylik ---
+  const durations = info && info.durations;
+
+  if (videoDurationRow) {
+    videoDurationRow.classList.toggle("hidden", !durations || !durations.length);
+  }
+
+  if (durations && durations.length) {
+    if (!durations.includes(currentVideoDuration)) {
+      currentVideoDuration = durations[0];
+    }
+
+    videoDurationChips.querySelectorAll("[data-video-duration]").forEach((chip) => {
+      const supported = durations.includes(chip.dataset.videoDuration);
+      chip.classList.toggle("hidden", !supported);
+      chip.classList.toggle("active", chip.dataset.videoDuration === currentVideoDuration);
+    });
+  } else {
+    currentVideoDuration = null;
+  }
+
+  // --- Boshlang'ich kadr (rasmdan video) ---
+  const supportsImage = Boolean(info && info.supports_image);
+
+  if (videoFrameRow) {
+    videoFrameRow.classList.toggle("hidden", !supportsImage);
+  }
+
+  // Agar yangi tanlangan model rasmni qo'llab-quvvatlamasa,
+  // avval tanlangan kadrni tozalaymiz — aks holda serverga
+  // qo'llab-quvvatlanmaydigan so'rov ketib, xato qaytaradi.
+  if (!supportsImage && selectedVideoFrameFile) {
+    clearVideoFrame();
+  }
+}
+
+function clearVideoFrame() {
+  selectedVideoFrameFile = null;
+  if (videoFrameInput) videoFrameInput.value = "";
+  if (videoFramePreviewWrap) videoFramePreviewWrap.classList.add("hidden");
+  if (videoFramePreviewImg) videoFramePreviewImg.src = "";
+  if (videoFrameBtn) videoFrameBtn.classList.remove("hidden");
+}
+
+if (videoModelChips) {
+  videoModelChips.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-video-model]");
+    if (!chip) return;
+
+    currentVideoModel = chip.dataset.videoModel;
+
+    videoModelChips.querySelectorAll("[data-video-model]").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+
+    updateVideoControlsForModel();
+  });
+}
+
+if (videoAspectRow) {
+  videoAspectRow.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-video-aspect]");
+    if (!chip || chip.classList.contains("hidden")) return;
+
+    currentVideoAspect = chip.dataset.videoAspect;
+
+    videoAspectRow.querySelectorAll("[data-video-aspect]").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+  });
+}
+
+if (videoDurationChips) {
+  videoDurationChips.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-video-duration]");
+    if (!chip || chip.classList.contains("hidden")) return;
+
+    currentVideoDuration = chip.dataset.videoDuration;
+
+    videoDurationChips.querySelectorAll("[data-video-duration]").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+  });
+}
+
+if (videoFrameBtn) {
+  videoFrameBtn.addEventListener("click", () => {
+    videoFrameInput.click();
+  });
+}
+
+if (videoFrameInput) {
+  videoFrameInput.addEventListener("change", () => {
+    const file = videoFrameInput.files[0];
+    if (!file) return;
+
+    selectedVideoFrameFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      videoFramePreviewImg.src = reader.result;
+      videoFramePreviewWrap.classList.remove("hidden");
+      videoFrameBtn.classList.add("hidden");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (videoFrameRemoveBtn) {
+  videoFrameRemoveBtn.addEventListener("click", () => {
+    clearVideoFrame();
+  });
+}
+
 // ============ MODE SWITCHING ============
 
 function placeholderFor(mode) {
@@ -471,6 +709,14 @@ function setMode(mode) {
   imageSettingsRow.classList.toggle("hidden", mode !== "image");
   videoModelRow.classList.toggle("hidden", mode !== "video");
 
+  if (mode === "video") {
+    updateVideoControlsForModel();
+  } else {
+    videoFormatRow.classList.add("hidden");
+    videoDurationRow.classList.add("hidden");
+    videoFrameRow.classList.add("hidden");
+  }
+
   messageInput.placeholder = placeholderFor(mode);
 }
 
@@ -484,15 +730,6 @@ aspectRatioRow.addEventListener("click", (e) => {
   if (!chip) return;
   currentAspect = chip.dataset.aspect;
   aspectRatioRow.querySelectorAll(".mini-chip").forEach((c) =>
-    c.classList.toggle("active", c === chip)
-  );
-});
-
-videoModelRow.addEventListener("click", (e) => {
-  const chip = e.target.closest("[data-video-model]");
-  if (!chip) return;
-  currentVideoModel = chip.dataset.videoModel;
-  videoModelRow.querySelectorAll(".mini-chip").forEach((c) =>
     c.classList.toggle("active", c === chip)
   );
 });
@@ -603,11 +840,31 @@ async function handleSend() {
       form.append("init_data", initData);
       form.append("prompt", text);
       form.append("model_key", currentVideoModel);
+
+      // MUHIM (YANGI): format/davomiylik/kadr — faqat tanlangan
+      // model shularni qo'llab-quvvatlagandagina (currentVideoAspect
+      // va h.k. null bo'lmasa) yuboriladi. "wan" kabi modellar
+      // uchun bular umuman yuborilmaydi.
+      if (currentVideoAspect) {
+        form.append("aspect_ratio", currentVideoAspect);
+      }
+      if (currentVideoDuration) {
+        form.append("duration", currentVideoDuration);
+      }
+      if (selectedVideoFrameFile) {
+        form.append("frame", selectedVideoFrameFile);
+      }
+
       const resp = await fetch("/api/generate-video", { method: "POST", body: form });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || tr("genericError"));
       resolvePendingAsVideo(pending, data.video_url);
       updateBalance(data.balance);
+
+      // Keyingi video uchun kadrni avtomatik tozalamaymiz —
+      // foydalanuvchi xohlasa xuddi shu kadrdan yana boshqa
+      // tavsif bilan video yaratishi mumkin. Xohlasa o'zi
+      // "✕" tugmasi bilan olib tashlaydi.
 
     } else if (currentMode === "music") {
       const pending = appendPendingBubble(tr("pendingMusic"));
@@ -832,7 +1089,13 @@ async function init() {
   currentLang = await loadLang();
   applyTranslations();
 
-  await Promise.all([loadStyles(), loadBalance()]);
+  await Promise.all([loadStyles(), loadBalance(), loadVideoModels()]);
+
+  // MUHIM: video modellari yuklanganidan KEYIN chiplarni
+  // qayta chizamiz — applyTranslations() ichidagi birinchi
+  // renderVideoModelChips() chaqiruvi videoModels hali bo'sh
+  // bo'lgan paytda ishlagan bo'ladi.
+  renderVideoModelChips();
 }
 
 init();
