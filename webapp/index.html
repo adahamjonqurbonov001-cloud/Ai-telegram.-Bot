@@ -103,12 +103,49 @@
       </div>
     </div>
 
+    <!-- MUHIM: video model tugmalari endi statik emas — JS
+         /api/video-models'dan olib, shu qatorga dinamik
+         chiqaradi (videoModelRow ichiga). Shunda bot.py'dagi
+         VIDEO_MODELS'ga yangi model qo'shilsa, bu fayl
+         o'zgarmasa ham avtomatik ko'rinadi. -->
     <div class="settings-row hidden" id="videoModelRow">
       <div class="settings-label" id="modelLabel">Model</div>
-      <div class="chip-scroll">
-        <button class="mini-chip active" data-video-model="wan" id="videoModelWanBtn">🟢 Wan (arzon)</button>
-        <button class="mini-chip" data-video-model="kling" id="videoModelKlingBtn">🔵 Kling (sifatli)</button>
+      <div class="chip-scroll" id="videoModelChips"></div>
+    </div>
+
+    <!-- Video format (aspect_ratio) — faqat tanlangan model
+         qo'llab-quvvatlasa ko'rinadi (masalan Wan'da yashirin). -->
+    <div class="settings-row hidden" id="videoFormatRow">
+      <div class="settings-label" id="videoFormatLabel">Format</div>
+      <div class="chip-scroll" id="videoAspectRow">
+        <button class="mini-chip" data-video-aspect="16:9">16:9</button>
+        <button class="mini-chip" data-video-aspect="9:16">9:16</button>
+        <button class="mini-chip" data-video-aspect="1:1">1:1</button>
       </div>
+    </div>
+
+    <!-- Video davomiyligi — faqat tanlangan model qo'llab-
+         quvvatlasa ko'rinadi. -->
+    <div class="settings-row hidden" id="videoDurationRow">
+      <div class="settings-label" id="durationLabel">Davomiylik</div>
+      <div class="chip-scroll" id="videoDurationChips">
+        <button class="mini-chip" data-video-duration="5">5s</button>
+        <button class="mini-chip" data-video-duration="10">10s</button>
+      </div>
+    </div>
+
+    <!-- Rasmdan video (image-to-video) — faqat tanlangan model
+         qo'llab-quvvatlasa ko'rinadi. -->
+    <div class="settings-row hidden" id="videoFrameRow">
+      <div class="settings-label" id="frameLabel">Boshlang'ich rasm (ixtiyoriy)</div>
+      <div class="frame-picker">
+        <button class="mini-chip" id="videoFrameBtn" type="button">📷 Rasm tanlash</button>
+        <div class="frame-preview hidden" id="videoFramePreviewWrap">
+          <img id="videoFramePreviewImg" alt="" />
+          <button class="frame-remove-btn" id="videoFrameRemoveBtn" type="button">✕</button>
+        </div>
+      </div>
+      <input type="file" id="videoFrameInput" accept="image/*" class="hidden-input" />
     </div>
 
     <div class="mode-row" id="modeRow">
