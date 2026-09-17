@@ -41,6 +41,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Rasm tanlash",
     frameRemove: "✕ O'chirish",
     frameNotSupported: "Bu model rasmdan video yaratishni qo'llab-quvvatlamaydi.",
+    voiceGenderLabel: "Ovoz",
+    voiceGenderFemale: "👩 Ayol",
+    voiceGenderMale: "👨 Erkak",
     modeText: "💬 Matn",
     modeImage: "🎨 Rasm",
     modeVideo: "🎬 Video",
@@ -87,6 +90,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Выбрать фото",
     frameRemove: "✕ Убрать",
     frameNotSupported: "Эта модель не поддерживает создание видео из фото.",
+    voiceGenderLabel: "Голос",
+    voiceGenderFemale: "👩 Женский",
+    voiceGenderMale: "👨 Мужской",
     modeText: "💬 Текст",
     modeImage: "🎨 Фото",
     modeVideo: "🎬 Видео",
@@ -133,6 +139,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Сурет таңдау",
     frameRemove: "✕ Өшіру",
     frameNotSupported: "Бұл модель фотодан видео жасауды қолдамайды.",
+    voiceGenderLabel: "Дауыс",
+    voiceGenderFemale: "👩 Әйел",
+    voiceGenderMale: "👨 Ер",
     modeText: "💬 Мәтін",
     modeImage: "🎨 Сурет",
     modeVideo: "🎬 Видео",
@@ -179,6 +188,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Интихоби расм",
     frameRemove: "✕ Хориҷ кардан",
     frameNotSupported: "Ин модел сохтани видео аз расмро дастгирӣ намекунад.",
+    voiceGenderLabel: "Садо",
+    voiceGenderFemale: "👩 Занона",
+    voiceGenderMale: "👨 Мардона",
     modeText: "💬 Матн",
     modeImage: "🎨 Расм",
     modeVideo: "🎬 Видео",
@@ -225,6 +237,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Сүрөт тандоо",
     frameRemove: "✕ Өчүрүү",
     frameNotSupported: "Бул модель сүрөттөн видео жасоону колдобойт.",
+    voiceGenderLabel: "Үн",
+    voiceGenderFemale: "👩 Аял",
+    voiceGenderMale: "👨 Эркек",
     modeText: "💬 Текст",
     modeImage: "🎨 Сүрөт",
     modeVideo: "🎬 Видео",
@@ -271,6 +286,9 @@ const MINIAPP_I18N = {
     frameButton: "📷 Choose photo",
     frameRemove: "✕ Remove",
     frameNotSupported: "This model doesn't support image-to-video.",
+    voiceGenderLabel: "Voice",
+    voiceGenderFemale: "👩 Female",
+    voiceGenderMale: "👨 Male",
     modeText: "💬 Text",
     modeImage: "🎨 Image",
     modeVideo: "🎬 Video",
@@ -330,6 +348,11 @@ const videoAspectRow = document.getElementById("videoAspectRow");
 const videoDurationRow = document.getElementById("videoDurationRow");
 const videoDurationChips = document.getElementById("videoDurationChips");
 const videoFrameRow = document.getElementById("videoFrameRow");
+const voiceGenderRow = document.getElementById("voiceGenderRow");
+const voiceGenderChips = document.getElementById("voiceGenderChips");
+const voiceGenderLabel = document.getElementById("voiceGenderLabel");
+const voiceGenderFemaleBtn = document.getElementById("voiceGenderFemaleBtn");
+const voiceGenderMaleBtn = document.getElementById("voiceGenderMaleBtn");
 const videoFrameBtn = document.getElementById("videoFrameBtn");
 const videoFrameInput = document.getElementById("videoFrameInput");
 const videoFramePreviewWrap = document.getElementById("videoFramePreviewWrap");
@@ -390,6 +413,9 @@ let currentVideoAspect = null;
 let currentVideoDuration = null;
 let selectedVideoFrameFile = null;
 
+// MUHIM (YANGI): "Ovoz" rejimida ayol/erkak tanlovi.
+let currentVoiceGender = "female";
+
 // ============ TARJIMALARNI QO'LLASH ============
 
 function setHelpLine(el, text) {
@@ -427,6 +453,9 @@ function applyTranslations() {
   if (videoFormatLabel) videoFormatLabel.textContent = tr("formatLabel");
   if (durationLabel) durationLabel.textContent = tr("durationLabel");
   if (frameLabel) frameLabel.textContent = tr("frameLabel");
+  if (voiceGenderLabel) voiceGenderLabel.textContent = tr("voiceGenderLabel");
+  if (voiceGenderFemaleBtn) voiceGenderFemaleBtn.textContent = tr("voiceGenderFemale");
+  if (voiceGenderMaleBtn) voiceGenderMaleBtn.textContent = tr("voiceGenderMale");
   if (videoFrameBtn) videoFrameBtn.textContent = tr("frameButton");
   if (videoFrameRemoveBtn) videoFrameRemoveBtn.textContent = "✕";
 
@@ -744,6 +773,7 @@ function setMode(mode) {
 
   imageSettingsRow.classList.toggle("hidden", mode !== "image");
   videoModelRow.classList.toggle("hidden", mode !== "video");
+  voiceGenderRow.classList.toggle("hidden", mode !== "voice");
 
   if (mode === "video") {
     updateVideoControlsForModel();
@@ -766,6 +796,15 @@ aspectRatioRow.addEventListener("click", (e) => {
   if (!chip) return;
   currentAspect = chip.dataset.aspect;
   aspectRatioRow.querySelectorAll(".mini-chip").forEach((c) =>
+    c.classList.toggle("active", c === chip)
+  );
+});
+
+voiceGenderChips.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-voice-gender]");
+  if (!chip) return;
+  currentVoiceGender = chip.dataset.voiceGender;
+  voiceGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
     c.classList.toggle("active", c === chip)
   );
 });
@@ -973,6 +1012,7 @@ async function handleSend() {
       const form = new FormData();
       form.append("init_data", initData);
       form.append("text", text);
+      form.append("voice_gender", currentVoiceGender);
       const resp = await fetch("/api/generate-voice", { method: "POST", body: form });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || tr("genericError"));
