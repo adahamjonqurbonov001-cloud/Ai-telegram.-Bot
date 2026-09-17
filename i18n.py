@@ -296,6 +296,22 @@ TEXTS = {
         "ky": "Төмөнкү баскычтардын бирин тандаңыз.",
         "en": "Please choose one of the buttons below.",
     },
+    "voice_choose_gender": {
+        "uz": "🔊 Qaysi ovozni tanlaysiz?",
+        "ru": "🔊 Какой голос выбрать?",
+        "kk": "🔊 Қай дауысты таңдайсыз?",
+        "tg": "🔊 Кадом садоро интихоб мекунед?",
+        "ky": "🔊 Кайсы үндү тандайсыз?",
+        "en": "🔊 Which voice would you like?",
+    },
+    "voice_gender_female_btn": {
+        "uz": "👩 Ayol", "ru": "👩 Женский", "kk": "👩 Әйел",
+        "tg": "👩 Занона", "ky": "👩 Аял", "en": "👩 Female",
+    },
+    "voice_gender_male_btn": {
+        "uz": "👨 Erkak", "ru": "👨 Мужской", "kk": "👨 Ер",
+        "tg": "👨 Мардона", "ky": "👨 Эркек", "en": "👨 Male",
+    },
     "voice_ask_text": {
         "uz": "🔊 Qaysi matnni ovozga aylantirishim kerak? Matnni yozing.\nMasalan: _Assalomu alaykum, bugun ob-havo juda yaxshi_",
         "ru": "🔊 Какой текст озвучить? Напишите его.\nНапример: _Здравствуйте, сегодня отличная погода_",
@@ -655,4 +671,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-    )
+)
