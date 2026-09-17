@@ -168,6 +168,15 @@
       <input type="file" id="videoFrameInput" accept="image/*" class="hidden-input" />
     </div>
 
+    <!-- Ovoz jinsi (ayol/erkak) — faqat "Ovoz" rejimida ko'rinadi. -->
+    <div class="settings-row hidden" id="voiceGenderRow">
+      <div class="settings-label" id="voiceGenderLabel">Ovoz</div>
+      <div class="chip-scroll" id="voiceGenderChips">
+        <button class="mini-chip active" data-voice-gender="female" id="voiceGenderFemaleBtn">👩 Ayol</button>
+        <button class="mini-chip" data-voice-gender="male" id="voiceGenderMaleBtn">👨 Erkak</button>
+      </div>
+    </div>
+
     <div class="mode-row" id="modeRow">
       <button class="mode-chip active" data-mode="text" id="modeTextBtn">💬 Matn</button>
       <button class="mode-chip" data-mode="image" id="modeImageBtn">🎨 Rasm</button>
