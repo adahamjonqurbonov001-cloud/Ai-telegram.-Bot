@@ -70,6 +70,7 @@ from bot import (
     generate_higgsfield_image,
     get_balance,
     get_lang,
+    get_tts_voice,
 )
 from i18n import DEFAULT_LANGUAGE, style_label, t
 
@@ -917,6 +918,7 @@ async def api_generate_music(
 async def api_generate_voice(
     init_data: str = Form(...),
     text: str = Form(...),
+    voice_gender: str = Form("female"),
 ):
 
     user = verify_telegram_init_data(
@@ -938,9 +940,12 @@ async def api_generate_voice(
             ),
         )
 
-    selected_voice = TTS_VOICE_MAP.get(
+    # MUHIM (YANGI): endi ayol/erkak tanlovi qabul qilinadi.
+    # Noma'lum qiymat kelsa (yoki umuman kelmasa) "female"ga
+    # tushib qoladi — hech qachon xato bermaydi.
+    selected_voice = get_tts_voice(
         lang,
-        DEFAULT_TTS_VOICE,
+        voice_gender,
     )
 
     audio_path = (
@@ -1133,4 +1138,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-)
+                                    )
