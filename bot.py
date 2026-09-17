@@ -135,16 +135,34 @@ WELCOME_IMAGE_PATH = "welcome.jpg"
 MODEL_NAME = "claude-sonnet-4-6"
 
 # edge-tts ovozlari — har bir interfeys tili uchun mos ovoz.
+# edge-tts ovozlari — har bir interfeys tili uchun ayol VA erkak
+# ovozi (MUHIM, YANGI). Avval har bir til uchun faqat bitta
+# (ayol) ovoz qattiq bog'langan edi. Bu 4 ta yangi erkak ovoz
+# (Sardor, Dmitry, Daulet, Guy) rasmiy Microsoft edge-tts
+# ro'yxatida tasdiqlangan — xato chiqarmaydi. tg (tojik) va ky
+# (qirg'iz) uchun na ayol, na erkak tabiiy ovoz yo'q — ikkalasi
+# ham ruscha ovozga zaxiralangan (avvalgidek).
 TTS_VOICE_MAP = {
-    "uz": "uz-UZ-MadinaNeural",
-    "ru": "ru-RU-SvetlanaNeural",
-    "kk": "kk-KZ-AigulNeural",
-    "en": "en-US-JennyNeural",
-    "tg": "ru-RU-SvetlanaNeural",  # tg uchun tabiiy ovoz yo'q
-    "ky": "ru-RU-SvetlanaNeural",  # ky uchun tabiiy ovoz yo'q
+    "uz": {"female": "uz-UZ-MadinaNeural", "male": "uz-UZ-SardorNeural"},
+    "ru": {"female": "ru-RU-SvetlanaNeural", "male": "ru-RU-DmitryNeural"},
+    "kk": {"female": "kk-KZ-AigulNeural", "male": "kk-KZ-DauletNeural"},
+    "en": {"female": "en-US-JennyNeural", "male": "en-US-GuyNeural"},
+    "tg": {"female": "ru-RU-SvetlanaNeural", "male": "ru-RU-DmitryNeural"},
+    "ky": {"female": "ru-RU-SvetlanaNeural", "male": "ru-RU-DmitryNeural"},
 }
 
 DEFAULT_TTS_VOICE = "uz-UZ-MadinaNeural"
+
+
+def get_tts_voice(lang: str, gender: str = "female") -> str:
+    """
+    Berilgan til va jins uchun mos edge-tts ovoz nomini
+    qaytaradi. Noma'lum til yoki jins bo'lsa, standart (ayol,
+    o'zbek) ovozga qaytadi — hech qachon xato bermaydi.
+    """
+    lang_voices = TTS_VOICE_MAP.get(lang, TTS_VOICE_MAP["uz"])
+    return lang_voices.get(gender) or lang_voices.get("female") or DEFAULT_TTS_VOICE
+
 
 
 # ============================================================
@@ -343,6 +361,13 @@ awaiting_video_prompt: dict[
 awaiting_voice_text: dict[
     int,
     bool
+] = {}
+
+# MUHIM (YANGI): foydalanuvchi "erkak" yoki "ayol" ovozini
+# tanlaganidan keyin, matn kiritilguncha shu yerda saqlanadi.
+voice_gender_choice: dict[
+    int,
+    str
 ] = {}
 
 awaiting_music_prompt: dict[
@@ -1402,6 +1427,7 @@ async def start(
     )
 
     awaiting_voice_text[chat_id] = False
+    voice_gender_choice.pop(chat_id, None)
     awaiting_music_prompt[chat_id] = False
     awaiting_style_photo.pop(
         chat_id,
@@ -1887,6 +1913,7 @@ async def new_chat(
     )
 
     awaiting_voice_text[chat_id] = False
+    voice_gender_choice.pop(chat_id, None)
     awaiting_music_prompt[chat_id] = False
 
     awaiting_style_photo.pop(
@@ -2301,11 +2328,53 @@ async def ask_voice_text(
 
         return
 
-    awaiting_voice_text[
-        chat_id
-    ] = True
-
+    # MUHIM (YANGI): matn so'rashdan oldin ayol/erkak ovozini
+    # tanlashni so'raymiz.
     await update.message.reply_text(
+        t(
+            lang,
+            "voice_choose_gender",
+        ),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        t(lang, "voice_gender_female_btn"),
+                        callback_data="voice_gender:female",
+                    ),
+                    InlineKeyboardButton(
+                        t(lang, "voice_gender_male_btn"),
+                        callback_data="voice_gender:male",
+                    ),
+                ]
+            ]
+        ),
+    )
+
+
+async def voice_gender_selected_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    chat_id = query.message.chat_id
+
+    lang = get_lang(chat_id)
+
+    gender = query.data.split(":", 1)[1]
+
+    if gender not in ("female", "male"):
+        return
+
+    voice_gender_choice[chat_id] = gender
+
+    awaiting_voice_text[chat_id] = True
+
+    await query.message.reply_text(
         t(
             lang,
             "voice_ask_text",
@@ -2360,9 +2429,14 @@ async def generate_voice_from_text(
 
     try:
 
-        selected_voice = TTS_VOICE_MAP.get(
+        gender = voice_gender_choice.pop(
+            chat_id,
+            "female",
+        )
+
+        selected_voice = get_tts_voice(
             lang,
-            DEFAULT_TTS_VOICE,
+            gender,
         )
 
         communicate = edge_tts.Communicate(
@@ -2389,6 +2463,7 @@ async def generate_voice_from_text(
                 "edge-tts bo'sh audio "
                 "fayl qaytardi"
             )
+
 
         new_balance = change_balance(
             chat_id,
@@ -3361,6 +3436,13 @@ def build_application():
         CallbackQueryHandler(
             language_selected_callback,
             pattern=r"^lang:",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            voice_gender_selected_callback,
+            pattern=r"^voice_gender:",
         )
     )
 
