@@ -592,7 +592,7 @@ function updateVideoControlsForModel() {
       currentVideoAspect = aspectRatios[0];
     }
 
-    videoAspectRow.querySelectorAll("[data-video-aspect]").forEach((chip) => {
+    videoAspectRow?.querySelectorAll("[data-video-aspect]").forEach((chip) => {
       const supported = aspectRatios.includes(chip.dataset.videoAspect);
       chip.classList.toggle("hidden", !supported);
       chip.classList.toggle("active", chip.dataset.videoAspect === currentVideoAspect);
@@ -613,7 +613,7 @@ function updateVideoControlsForModel() {
       currentVideoDuration = durations[0];
     }
 
-    videoDurationChips.querySelectorAll("[data-video-duration]").forEach((chip) => {
+    videoDurationChips?.querySelectorAll("[data-video-duration]").forEach((chip) => {
       const supported = durations.includes(chip.dataset.videoDuration);
       chip.classList.toggle("hidden", !supported);
       chip.classList.toggle("active", chip.dataset.videoDuration === currentVideoDuration);
@@ -771,16 +771,24 @@ function setMode(mode) {
     chip.classList.toggle("active", chip.dataset.mode === mode);
   });
 
-  imageSettingsRow.classList.toggle("hidden", mode !== "image");
-  videoModelRow.classList.toggle("hidden", mode !== "video");
-  voiceGenderRow.classList.toggle("hidden", mode !== "voice");
+  // MUHIM TUZATISH: har bir elementni ishlatishdan oldin
+  // mavjudligini tekshiramiz (if (el) ...). Avval bu tekshiruv
+  // yo'q edi — agar HTML biror sababga ko'ra hali eski (masalan
+  // fayl to'liq almashtirilmagan yoki keshda qolgan) bo'lsa,
+  // yo'q elementga murojaat butun setMode() funksiyasini (demak,
+  // butun init() jarayonini — balans, stillar va hammasini)
+  // "sindirib" qo'yardi. Endi bitta element yo'q bo'lsa ham,
+  // qolgan hammasi normal ishlayveradi.
+  if (imageSettingsRow) imageSettingsRow.classList.toggle("hidden", mode !== "image");
+  if (videoModelRow) videoModelRow.classList.toggle("hidden", mode !== "video");
+  if (voiceGenderRow) voiceGenderRow.classList.toggle("hidden", mode !== "voice");
 
   if (mode === "video") {
     updateVideoControlsForModel();
   } else {
-    videoFormatRow.classList.add("hidden");
-    videoDurationRow.classList.add("hidden");
-    videoFrameRow.classList.add("hidden");
+    if (videoFormatRow) videoFormatRow.classList.add("hidden");
+    if (videoDurationRow) videoDurationRow.classList.add("hidden");
+    if (videoFrameRow) videoFrameRow.classList.add("hidden");
   }
 
   messageInput.placeholder = placeholderFor(mode);
@@ -800,14 +808,16 @@ aspectRatioRow.addEventListener("click", (e) => {
   );
 });
 
-voiceGenderChips.addEventListener("click", (e) => {
-  const chip = e.target.closest("[data-voice-gender]");
-  if (!chip) return;
-  currentVoiceGender = chip.dataset.voiceGender;
-  voiceGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
-    c.classList.toggle("active", c === chip)
-  );
-});
+if (voiceGenderChips) {
+  voiceGenderChips.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-voice-gender]");
+    if (!chip) return;
+    currentVoiceGender = chip.dataset.voiceGender;
+    voiceGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+  });
+}
 
 // ============ CHAT RENDERING ============
 
