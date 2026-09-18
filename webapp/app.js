@@ -44,6 +44,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Ovoz",
     voiceGenderFemale: "👩 Ayol",
     voiceGenderMale: "👨 Erkak",
+    voiceoverLabel: "Video nima desin? (ixtiyoriy)",
+    voiceoverPlaceholder: "Masalan: Assalomu alaykum, xush kelibsiz!",
     modeText: "💬 Matn",
     modeImage: "🎨 Rasm",
     modeVideo: "🎬 Video",
@@ -93,6 +95,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Голос",
     voiceGenderFemale: "👩 Женский",
     voiceGenderMale: "👨 Мужской",
+    voiceoverLabel: "Что должно сказать видео? (необязательно)",
+    voiceoverPlaceholder: "Например: Здравствуйте, добро пожаловать!",
     modeText: "💬 Текст",
     modeImage: "🎨 Фото",
     modeVideo: "🎬 Видео",
@@ -142,6 +146,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Дауыс",
     voiceGenderFemale: "👩 Әйел",
     voiceGenderMale: "👨 Ер",
+    voiceoverLabel: "Бейне не айтсын? (міндетті емес)",
+    voiceoverPlaceholder: "Мысалы: Ассалому алайкум, қош келдіңіз!",
     modeText: "💬 Мәтін",
     modeImage: "🎨 Сурет",
     modeVideo: "🎬 Видео",
@@ -191,6 +197,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Садо",
     voiceGenderFemale: "👩 Занона",
     voiceGenderMale: "👨 Мардона",
+    voiceoverLabel: "Видео чӣ бигӯяд? (ихтиёрӣ)",
+    voiceoverPlaceholder: "Масалан: Ассалому алайкум, хуш омадед!",
     modeText: "💬 Матн",
     modeImage: "🎨 Расм",
     modeVideo: "🎬 Видео",
@@ -240,6 +248,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Үн",
     voiceGenderFemale: "👩 Аял",
     voiceGenderMale: "👨 Эркек",
+    voiceoverLabel: "Видео эмне десин? (милдеттүү эмес)",
+    voiceoverPlaceholder: "Мисалы: Ассалому алейкум, кош келдиңиз!",
     modeText: "💬 Текст",
     modeImage: "🎨 Сүрөт",
     modeVideo: "🎬 Видео",
@@ -289,6 +299,8 @@ const MINIAPP_I18N = {
     voiceGenderLabel: "Voice",
     voiceGenderFemale: "👩 Female",
     voiceGenderMale: "👨 Male",
+    voiceoverLabel: "What should the video say? (optional)",
+    voiceoverPlaceholder: "E.g.: Hello, welcome!",
     modeText: "💬 Text",
     modeImage: "🎨 Image",
     modeVideo: "🎬 Video",
@@ -353,6 +365,10 @@ const voiceGenderChips = document.getElementById("voiceGenderChips");
 const voiceGenderLabel = document.getElementById("voiceGenderLabel");
 const voiceGenderFemaleBtn = document.getElementById("voiceGenderFemaleBtn");
 const voiceGenderMaleBtn = document.getElementById("voiceGenderMaleBtn");
+const voiceoverRow = document.getElementById("voiceoverRow");
+const voiceoverLabel = document.getElementById("voiceoverLabel");
+const voiceoverText = document.getElementById("voiceoverText");
+const voiceoverGenderChips = document.getElementById("voiceoverGenderChips");
 const videoFrameBtn = document.getElementById("videoFrameBtn");
 const videoFrameInput = document.getElementById("videoFrameInput");
 const videoFramePreviewWrap = document.getElementById("videoFramePreviewWrap");
@@ -416,6 +432,14 @@ let selectedVideoFrameFile = null;
 // MUHIM (YANGI): "Ovoz" rejimida ayol/erkak tanlovi.
 let currentVoiceGender = "female";
 
+// MUHIM (YANGI): video+ovoz (voiceover) uchun tanlangan jins.
+// Alohida o'zgaruvchi — "Ovoz" rejimidagi tanlovdan mustaqil.
+let currentVoiceoverGender = "female";
+
+// Video+ovoz qaysi model kalitlarida ko'rinadi — server.py'dagi
+// VOICEOVER_ALLOWED_MODELS bilan bir xil bo'lishi shart.
+const VOICEOVER_ALLOWED_MODELS = ["kling", "kling_pro"];
+
 // ============ TARJIMALARNI QO'LLASH ============
 
 function setHelpLine(el, text) {
@@ -456,6 +480,12 @@ function applyTranslations() {
   if (voiceGenderLabel) voiceGenderLabel.textContent = tr("voiceGenderLabel");
   if (voiceGenderFemaleBtn) voiceGenderFemaleBtn.textContent = tr("voiceGenderFemale");
   if (voiceGenderMaleBtn) voiceGenderMaleBtn.textContent = tr("voiceGenderMale");
+  if (voiceoverLabel) voiceoverLabel.textContent = tr("voiceoverLabel");
+  if (voiceoverText) voiceoverText.placeholder = tr("voiceoverPlaceholder");
+  const voiceoverFemaleBtn = document.getElementById("voiceoverGenderFemaleBtn");
+  const voiceoverMaleBtn = document.getElementById("voiceoverGenderMaleBtn");
+  if (voiceoverFemaleBtn) voiceoverFemaleBtn.textContent = tr("voiceGenderFemale");
+  if (voiceoverMaleBtn) voiceoverMaleBtn.textContent = tr("voiceGenderMale");
   if (videoFrameBtn) videoFrameBtn.textContent = tr("frameButton");
   if (videoFrameRemoveBtn) videoFrameRemoveBtn.textContent = "✕";
 
@@ -635,6 +665,13 @@ function updateVideoControlsForModel() {
   if (!supportsImage && selectedVideoFrameFile) {
     clearVideoFrame();
   }
+
+  // --- Video+ovoz (voiceover) — faqat Kling/Kling Pro'da ---
+  const supportsVoiceover = VOICEOVER_ALLOWED_MODELS.includes(currentVideoModel);
+
+  if (voiceoverRow) {
+    voiceoverRow.classList.toggle("hidden", !supportsVoiceover);
+  }
 }
 
 function clearVideoFrame() {
@@ -789,6 +826,7 @@ function setMode(mode) {
     if (videoFormatRow) videoFormatRow.classList.add("hidden");
     if (videoDurationRow) videoDurationRow.classList.add("hidden");
     if (videoFrameRow) videoFrameRow.classList.add("hidden");
+    if (voiceoverRow) voiceoverRow.classList.add("hidden");
   }
 
   messageInput.placeholder = placeholderFor(mode);
@@ -814,6 +852,17 @@ if (voiceGenderChips) {
     if (!chip) return;
     currentVoiceGender = chip.dataset.voiceGender;
     voiceGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+  });
+}
+
+if (voiceoverGenderChips) {
+  voiceoverGenderChips.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-voiceover-gender]");
+    if (!chip) return;
+    currentVoiceoverGender = chip.dataset.voiceoverGender;
+    voiceoverGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
       c.classList.toggle("active", c === chip)
     );
   });
@@ -987,6 +1036,14 @@ async function handleSend() {
       }
       if (selectedVideoFrameFile) {
         form.append("frame", selectedVideoFrameFile);
+      }
+
+      // MUHIM (YANGI): video+ovoz — faqat "Video nima desin?"
+      // maydoni to'ldirilgan bo'lsa yuboriladi (bo'sh bo'lsa,
+      // odatdagidek ovozsiz video yaratiladi).
+      if (voiceoverText && voiceoverText.value.trim()) {
+        form.append("voice_text", voiceoverText.value.trim());
+        form.append("voice_gender", currentVoiceoverGender);
       }
 
       const resp = await fetch("/api/generate-video", { method: "POST", body: form });
