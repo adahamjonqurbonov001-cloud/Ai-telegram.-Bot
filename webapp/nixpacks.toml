@@ -1,0 +1,13 @@
+# MUHIM: bu fayl repo'ning ASOSIY (root) papkasida turishi kerak —
+# bot.py, server.py bilan bir qatorda, webapp/ ichida EMAS.
+#
+# Bu Railway'ning "Nixpacks" quruvchisiga qo'shimcha tizim darajasidagi
+# paket (ffmpeg) o'rnatishni buyuradi. ffmpeg video+ovozni birlashtirish
+# (server.py'dagi build_video_with_voiceover funksiyasi) uchun kerak.
+#
+# Fayl qo'shilgach, Railway avtomatik ravishda qayta deploy paytida
+# shuni o'qiydi va ffmpeg'ni konteynerga o'rnatadi — boshqa hech
+# qanday qo'shimcha sozlash shart emas.
+
+[phases.setup]
+nixPkgs = ["...", "ffmpeg"]
