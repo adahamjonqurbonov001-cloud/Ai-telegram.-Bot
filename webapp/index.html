@@ -168,6 +168,23 @@
       <input type="file" id="videoFrameInput" accept="image/*" class="hidden-input" />
     </div>
 
+    <!-- Video+ovoz (voiceover) — faqat Kling/Kling Pro'da
+         ko'rinadi (VOICEOVER_ALLOWED_MODELS bilan mos). -->
+    <div class="settings-row hidden" id="voiceoverRow">
+      <div class="settings-label" id="voiceoverLabel">Video nima desin? (ixtiyoriy)</div>
+      <textarea
+        id="voiceoverText"
+        class="message-input"
+        placeholder="Masalan: Assalomu alaykum, xush kelibsiz!"
+        rows="1"
+        style="margin-bottom:6px;"
+      ></textarea>
+      <div class="chip-scroll" id="voiceoverGenderChips">
+        <button class="mini-chip active" data-voiceover-gender="female" id="voiceoverGenderFemaleBtn">👩 Ayol</button>
+        <button class="mini-chip" data-voiceover-gender="male" id="voiceoverGenderMaleBtn">👨 Erkak</button>
+      </div>
+    </div>
+
     <!-- Ovoz jinsi (ayol/erkak) — faqat "Ovoz" rejimida ko'rinadi. -->
     <div class="settings-row hidden" id="voiceGenderRow">
       <div class="settings-label" id="voiceGenderLabel">Ovoz</div>
