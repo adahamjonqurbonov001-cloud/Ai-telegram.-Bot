@@ -36,9 +36,11 @@ import uuid
 from urllib.parse import parse_qsl
 
 import edge_tts
+import httpx
 import uvicorn
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from bot import (
@@ -634,6 +636,153 @@ async def api_generate_image(
     }
 
 
+MEDIA_TMP_DIR = "/tmp/muborakxon_media"
+
+# Video+ovoz qaysi modellarda ishlashi (foydalanuvchi tanlovi
+# bo'yicha — faqat Kling va Kling Pro, sifatliroq natija uchun).
+VOICEOVER_ALLOWED_MODELS = {"kling", "kling_pro"}
+
+# Birlashtirilgan fayl necha soniyadan keyin o'chirilishi —
+# Railway diski cheksiz to'lib ketmasligi uchun (foydalanuvchi
+# odatda natijani darhol ko'radi/yuklab oladi).
+MEDIA_CLEANUP_DELAY_SECONDS = 900  # 15 daqiqa
+
+
+async def _delete_media_file_later(path: str, delay_seconds: int):
+    await asyncio.sleep(delay_seconds)
+    try:
+        os.remove(path)
+    except Exception:
+        pass
+
+
+async def build_video_with_voiceover(
+    video_url: str,
+    voice_text: str,
+    lang: str,
+    voice_gender: str,
+    job_id: str,
+) -> str:
+    """
+    MUHIM (YANGI): fal.ai'dan kelgan OVOZSIZ videoni yuklab
+    oladi, edge-tts orqali (get_tts_voice — bot.py'da avval
+    tayyorlangan) o'zbekcha/tanlangan tildagi nutq yaratadi va
+    ffmpeg bilan ikkalasini birlashtiradi. Natija fayl yo'lini
+    qaytaradi (URL emas — server o'zi /api/media orqali xizmat
+    qiladi, pastga qarang).
+
+    ESLATMA: ffmpeg konteynerga nixpacks.toml orqali alohida
+    o'rnatilishi kerak — agar u topilmasa, bu funksiya xato
+    beradi va chaqiruvchi kod (run_video_generation_job) buni
+    ushlab, foydalanuvchiga baribir OVOZSIZ videoni yetkazadi
+    (butun job muvaffaqiyatsiz bo'lib qolmaydi).
+    """
+
+    os.makedirs(MEDIA_TMP_DIR, exist_ok=True)
+
+    raw_video_path = os.path.join(
+        MEDIA_TMP_DIR, f"raw_{job_id}.mp4"
+    )
+    audio_path = os.path.join(
+        MEDIA_TMP_DIR, f"voice_{job_id}.mp3"
+    )
+    merged_path = os.path.join(
+        MEDIA_TMP_DIR, f"merged_{job_id}.mp4"
+    )
+
+    # 1. Ovozsiz videoni yuklab olamiz
+    async with httpx.AsyncClient(timeout=120) as client:
+        video_resp = await client.get(video_url)
+        video_resp.raise_for_status()
+        with open(raw_video_path, "wb") as f:
+            f.write(video_resp.content)
+
+    # 2. edge-tts orqali nutq yaratamiz
+    selected_voice = get_tts_voice(lang, voice_gender)
+
+    communicate = edge_tts.Communicate(
+        voice_text,
+        selected_voice,
+    )
+
+    await communicate.save(audio_path)
+
+    if (
+        not os.path.exists(audio_path)
+        or os.path.getsize(audio_path) == 0
+    ):
+        raise RuntimeError(
+            "edge-tts ovoz fayli yaratmadi"
+        )
+
+    # 3. ffmpeg bilan birlashtiramiz. "-shortest" ikkalasidan
+    # qisqarog'iga moslaydi (video odatda 5-10s, nutq ham
+    # taxminan shuncha bo'lishi kutiladi — MUHIM: agar nutq
+    # videodan ANCHA uzunroq bo'lsa, u kesib tashlanadi; agar
+    # qisqaroq bo'lsa, video ham nutq bilan birga tugaydi. Bu
+    # birinchi versiya uchun yetarli — kelajakda video uzunligini
+    # nutqqa moslab uzaytirish/qisqartirish qo'shilishi mumkin.
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg",
+        "-y",
+        "-i", raw_video_path,
+        "-i", audio_path,
+        "-c:v", "copy",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-shortest",
+        merged_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    _, stderr_bytes = await process.communicate()
+
+    for tmp_path in (raw_video_path, audio_path):
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
+    if process.returncode != 0 or not os.path.exists(merged_path):
+        error_text = stderr_bytes.decode(
+            "utf-8", errors="ignore"
+        )[-800:]
+        raise RuntimeError(
+            f"ffmpeg birlashtirish xatosi: {error_text}"
+        )
+
+    asyncio.create_task(
+        _delete_media_file_later(
+            merged_path,
+            MEDIA_CLEANUP_DELAY_SECONDS,
+        )
+    )
+
+    return merged_path
+
+
+@api.get("/api/media/{filename}")
+async def api_get_media(filename: str):
+    """
+    Birlashtirilgan (video+ovoz) fayllarni xizmat qiladi.
+    MUHIM: filename faqat MEDIA_TMP_DIR ichidan olinadi va
+    "/" yoki ".." kabi belgilar bo'lsa rad etiladi — aks holda
+    server diskidagi istalgan faylni o'qish mumkin bo'lib
+    qolardi (path traversal zaifligi).
+    """
+
+    if "/" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="noto'g'ri fayl nomi")
+
+    path = os.path.join(MEDIA_TMP_DIR, filename)
+
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="fayl topilmadi")
+
+    return FileResponse(path, media_type="video/mp4")
+
+
 async def run_video_generation_job(
     job_id: str,
     chat_id: int,
@@ -644,6 +793,8 @@ async def run_video_generation_job(
     duration: str | None,
     image_bytes: bytes | None,
     total_cost: int,
+    voice_text: str | None = None,
+    voice_gender: str = "female",
 ):
     """
     MUHIM (YANGI): asosiy video generatsiyasi shu funksiyada,
@@ -690,6 +841,44 @@ async def run_video_generation_job(
 
         return
 
+    final_video_url = video_url
+    has_voiceover = False
+
+    # MUHIM (YANGI): agar foydalanuvchi "Video nima desin?"
+    # matnini kiritgan bo'lsa VA model shuni qo'llab-quvvatlasa,
+    # ovozni qo'shishga harakat qilamiz. Bu qadam xato bersa
+    # (masalan ffmpeg hali sozlanmagan bo'lsa), BUTUN job
+    # muvaffaqiyatsiz bo'lib qolmaydi — foydalanuvchiga baribir
+    # ovozsiz video yetkaziladi, faqat admin'ga xabar boradi.
+    if voice_text and model_key in VOICEOVER_ALLOWED_MODELS:
+
+        try:
+
+            merged_path = await build_video_with_voiceover(
+                video_url,
+                voice_text,
+                lang,
+                voice_gender,
+                job_id,
+            )
+
+            final_video_url = (
+                f"/api/media/{os.path.basename(merged_path)}"
+            )
+
+            has_voiceover = True
+
+        except Exception:
+
+            logger.exception(
+                "Video+ovoz birlashtirish xatosi (ovozsiz "
+                "video bilan davom etiladi):"
+            )
+
+            await notify_admin_error_miniapp(
+                "Video+ovoz birlashtirish"
+            )
+
     new_balance = change_balance(
         chat_id,
         -total_cost,
@@ -697,9 +886,10 @@ async def run_video_generation_job(
 
     video_jobs[job_id] = {
         "status": "done",
-        "video_url": video_url,
+        "video_url": final_video_url,
         "balance": new_balance,
         "cost": total_cost,
+        "has_voiceover": has_voiceover,
     }
 
 
@@ -711,6 +901,8 @@ async def api_generate_video(
     aspect_ratio: str = Form(None),
     duration: str = Form(None),
     frame: UploadFile = None,
+    voice_text: str = Form(None),
+    voice_gender: str = Form("female"),
 ):
     """
     MUHIM (YANGI): endi bu endpoint videoni o'zi TAYYORLAMAYDI —
@@ -724,6 +916,9 @@ async def api_generate_video(
     Qo'shimcha parametrlar avvalgidek:
         - aspect_ratio, duration — model qo'llab-quvvatlasa
         - frame — rasmdan video uchun boshlang'ich kadr
+        - voice_text — "video nima desin" (ixtiyoriy, faqat
+          Kling/Kling Pro'da ishlaydi — VOICEOVER_ALLOWED_MODELS)
+        - voice_gender — "female" / "male"
 
     Narx: "kling_pro" — +COIN_COST_VIDEO_PRO_EXTRA;
     rasmdan video — +COIN_COST_VIDEO_IMAGE_EXTRA. Coin FAQAT
@@ -795,6 +990,8 @@ async def api_generate_video(
             duration,
             image_bytes,
             total_cost,
+            voice_text,
+            voice_gender,
         )
     )
 
@@ -1138,4 +1335,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-                                    )
+                    )
