@@ -868,6 +868,21 @@ if (voiceoverGenderChips) {
   });
 }
 
+// MUHIM TUZATISH: xuddi frame-preview'da bo'lgani kabi, agar
+// style.css'da mos kelmaydigan/keshlangan qoida bo'lsa ham,
+// voiceoverRow HAR DOIM ustun (column) va to'liq kenglikda
+// bo'lishini !important bilan majburlaymiz.
+if (voiceoverRow) {
+  voiceoverRow.style.setProperty("display", "flex", "important");
+  voiceoverRow.style.setProperty("flex-direction", "column", "important");
+  voiceoverRow.style.setProperty("align-items", "stretch", "important");
+}
+if (voiceoverText) {
+  voiceoverText.style.setProperty("width", "100%", "important");
+  voiceoverText.style.setProperty("display", "block", "important");
+  voiceoverText.style.setProperty("box-sizing", "border-box", "important");
+}
+
 // ============ CHAT RENDERING ============
 
 function scrollToBottom() {
@@ -944,7 +959,11 @@ function updateBalance(value) {
 // ishonchli ishlaydi — hech qanday ulanish uzoq ochiq
 // turmaydi.
 const VIDEO_POLL_INTERVAL_MS = 3000;
-const VIDEO_POLL_MAX_ATTEMPTS = 100; // ~5 daqiqa
+// MUHIM TUZATISH: 5 daqiqa (100 urinish) rasm+ovozli murakkab
+// video uchun yetarli emas edi — frontend "taslim" bo'lib
+// "Xatolik" ko'rsatgan, garchi server orqada hali ishlashi
+// mumkin edi. Endi 10 daqiqagacha kutamiz.
+const VIDEO_POLL_MAX_ATTEMPTS = 200; // ~10 daqiqa
 
 async function pollVideoStatus(jobId, pendingBubbleEl) {
   for (let attempt = 0; attempt < VIDEO_POLL_MAX_ATTEMPTS; attempt++) {
