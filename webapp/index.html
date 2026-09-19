@@ -169,17 +169,29 @@
     </div>
 
     <!-- Video+ovoz (voiceover) — faqat Kling/Kling Pro'da
-         ko'rinadi (VOICEOVER_ALLOWED_MODELS bilan mos). -->
-    <div class="settings-row hidden" id="voiceoverRow">
+         ko'rinadi (VOICEOVER_ALLOWED_MODELS bilan mos).
+         MUHIM TUZATISH: .settings-row odatda GORIZONTAL
+         joylashadi (label chapda, chip-scroll o'ngda) — bu
+         "Model"/"Format" kabi qisqa qatorlar uchun to'g'ri, lekin
+         bu yerda matn maydoni (<textarea>) bor, u shu bitta
+         qatorga sig'maganda juda torayib qolgan edi. Shuning
+         uchun bu qatorga alohida, USTUN (column) yo'nalishini
+         to'g'ridan-to'g'ri inline style="" bilan majburlaymiz —
+         style.css'da nima yozilishidan qat'iy nazar ishlaydi. -->
+    <div
+      class="settings-row hidden"
+      id="voiceoverRow"
+      style="display:flex;flex-direction:column;align-items:stretch;gap:6px;"
+    >
       <div class="settings-label" id="voiceoverLabel">Video nima desin? (ixtiyoriy)</div>
       <textarea
         id="voiceoverText"
         class="message-input"
         placeholder="Masalan: Assalomu alaykum, xush kelibsiz!"
-        rows="1"
-        style="margin-bottom:6px;"
+        rows="2"
+        style="display:block;width:100%;box-sizing:border-box;resize:none;"
       ></textarea>
-      <div class="chip-scroll" id="voiceoverGenderChips">
+      <div class="chip-scroll" id="voiceoverGenderChips" style="display:flex;">
         <button class="mini-chip active" data-voiceover-gender="female" id="voiceoverGenderFemaleBtn">👩 Ayol</button>
         <button class="mini-chip" data-voiceover-gender="male" id="voiceoverGenderMaleBtn">👨 Erkak</button>
       </div>
