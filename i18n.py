@@ -517,6 +517,22 @@ TEXTS = {
         "ky": "❌ Белгисиз видео модели.",
         "en": "❌ Unknown video model.",
     },
+    "video_missing": {
+        "uz": "❌ Video yuborilmadi.",
+        "ru": "❌ Видео не отправлено.",
+        "kk": "❌ Видео жіберілмеді.",
+        "tg": "❌ Видео фиристода нашуд.",
+        "ky": "❌ Видео жөнөтүлгөн жок.",
+        "en": "❌ No video was sent.",
+    },
+    "video_analyze_error": {
+        "uz": "Kechirasiz, videoni tahlil qilishda xatolik yuz berdi. Coin yechilmadi. Birozdan so'ng qayta urinib ko'ring.",
+        "ru": "Извините, при анализе видео произошла ошибка. Монеты не списаны. Попробуйте позже.",
+        "kk": "Кешіріңіз, видеоны талдау кезінде қате орын алды. Тиын шегерілмеді. Кейінірек қайталап көріңіз.",
+        "tg": "Мебахшед, ҳангоми таҳлили видео хато рӯй дод. Танга кам нашуд. Баъдтар бозоӣ кунед.",
+        "ky": "Кечиресиз, видеону талдоодо ката кетти. Монета алынган жок. Кийинчерээк кайра аракет кылыңыз.",
+        "en": "Sorry, an error occurred while analyzing the video. Coins weren't deducted. Try again later.",
+    },
 }
 
 
@@ -671,4 +687,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-)
+    )
