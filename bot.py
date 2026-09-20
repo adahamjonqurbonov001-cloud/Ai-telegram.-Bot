@@ -266,6 +266,11 @@ COIN_COST_VIDEO = 50
 COIN_COST_VOICE = 3
 COIN_COST_MUSIC = 15
 
+# Video Analyzer — video yuklab, undan professional video-
+# generatsiya prompti yaratish (kadrlarni ffmpeg bilan ajratib,
+# Claude'ning ko'rish (vision) qobiliyati orqali tahlil qilish).
+COIN_COST_VIDEO_ANALYZE = 20
+
 # "kling_pro" oddiy "kling"dan qimmatroq fal.ai narxiga ega
 # (native audio + kengroq boshqaruv). Mini App shu qo'shimcha
 # narxni COIN_COST_VIDEO ustiga qo'shadi. Telegram tarafidagi
@@ -1403,6 +1408,217 @@ async def apply_fal_ai_style(
     return await asyncio.to_thread(
         run_generation
     )
+
+
+# ============================================================
+# VIDEO ANALYZER — video'dan prompt yaratish
+# ============================================================
+#
+# MUHIM (YANGI): foydalanuvchi video yuklaydi → ffmpeg orqali
+# bir necha kadr (rasm) ajratiladi → shu kadrlar Claude'ning
+# ko'rish (vision) qobiliyati orqali tahlil qilinadi → natijada
+# tayyor video-generatsiya modellari (Kling/Wan) uchun
+# optimallashtirilgan professional ingliz tilidagi prompt
+# yaratiladi. Bu funksiya ham ffmpeg talab qiladi — video+ovoz
+# funksiyasi bilan bir xil (nixpacks.toml orqali o'rnatiladi).
+
+VIDEO_ANALYSIS_FRAME_COUNT = 5
+
+VIDEO_ANALYZER_SYSTEM_PROMPT = (
+    "You are a professional video analyst and prompt engineer for "
+    "AI video generation models such as Kling and Wan. You will be "
+    "shown several still frames sampled evenly across one short "
+    "video, in chronological order. Analyze them carefully and "
+    "respond in EXACTLY this format:\n\n"
+    "SCENE: ...\n"
+    "CAMERA: ...\n"
+    "SUBJECT: ...\n"
+    "ACTION: ...\n"
+    "ENVIRONMENT: ...\n"
+    "LIGHTING: ...\n"
+    "COLORS: ...\n"
+    "STYLE: ...\n"
+    "MOTION: ...\n"
+    "TIMING: ...\n"
+    "IMPORTANT DETAILS: ...\n"
+    "PROMPT: <a single, flowing, professional video-generation "
+    "prompt in English that combines everything above into one "
+    "paragraph, optimized for an AI video generator>\n\n"
+    "Always write your entire response in English, regardless of "
+    "what language the person might address you in."
+)
+
+
+async def extract_video_frames(
+    video_bytes: bytes,
+    job_id: str,
+    frame_count: int = VIDEO_ANALYSIS_FRAME_COUNT,
+) -> list[str]:
+    """
+    ffmpeg yordamida yuklangan videodan bir necha kadrni (teng
+    oraliqlarda) rasm sifatida ajratib oladi va ularning fayl
+    yo'llarini ro'yxat qilib qaytaradi.
+    """
+
+    tmp_dir = "/tmp/muborakxon_media"
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    video_path = os.path.join(
+        tmp_dir, f"analyze_src_{job_id}.mp4"
+    )
+
+    with open(video_path, "wb") as f:
+        f.write(video_bytes)
+
+    # Video davomiyligini ffprobe orqali bilib olamiz — agar
+    # muvaffaqiyatsiz bo'lsa, taxminiy 5 soniyaga zaxiralanamiz
+    # (baribir teng oraliqlarda urinib ko'radi).
+    duration = 5.0
+
+    try:
+
+        probe = await asyncio.create_subprocess_exec(
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        out_bytes, _ = await probe.communicate()
+
+        duration = float(out_bytes.decode().strip())
+
+    except Exception:
+
+        logger.warning(
+            "ffprobe davomiylikni bilib "
+            "ololmadi, zaxira qiymat "
+            "ishlatiladi"
+        )
+
+    frame_paths = []
+
+    for i in range(frame_count):
+
+        # Har bir kadrni intervalning O'RTASIDAN olamiz (chekka
+        # nuqtalar ko'pincha qora/tiniq bo'lmaydi).
+        timestamp = duration * (i + 0.5) / frame_count
+
+        frame_path = os.path.join(
+            tmp_dir, f"analyze_frame_{job_id}_{i}.jpg"
+        )
+
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y",
+            "-ss", str(timestamp),
+            "-i", video_path,
+            "-frames:v", "1",
+            "-q:v", "3",
+            frame_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        await proc.communicate()
+
+        if os.path.exists(frame_path):
+            frame_paths.append(frame_path)
+
+    try:
+        os.remove(video_path)
+    except Exception:
+        pass
+
+    return frame_paths
+
+
+async def analyze_video_with_claude(
+    frame_paths: list[str],
+) -> tuple[str, str]:
+    """
+    Ajratilgan kadrlarni Claude'ga (vision) yuboradi va tahlil +
+    video-generatsiya promptini qaytaradi:
+        (tahlil_matni, generatsiya_prompti)
+    """
+
+    content_blocks = []
+
+    for path in frame_paths:
+
+        with open(path, "rb") as f:
+            image_bytes = f.read()
+
+        b64_data = base64.b64encode(
+            image_bytes
+        ).decode("ascii")
+
+        content_blocks.append(
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": b64_data,
+                },
+            }
+        )
+
+    content_blocks.append(
+        {
+            "type": "text",
+            "text": (
+                "These frames are sampled evenly across one "
+                "short video, in chronological order. Analyze "
+                "them as instructed."
+            ),
+        }
+    )
+
+    response = await asyncio.to_thread(
+        claude_client.messages.create,
+        model=MODEL_NAME,
+        max_tokens=800,
+        system=VIDEO_ANALYZER_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": content_blocks,
+            }
+        ],
+    )
+
+    full_text = "".join(
+        block.text
+        for block in response.content
+        if block.type == "text"
+    ).strip()
+
+    if "PROMPT:" in full_text:
+
+        analysis_part, prompt_part = full_text.split(
+            "PROMPT:", 1
+        )
+
+        analysis_part = analysis_part.strip()
+        prompt_part = prompt_part.strip()
+
+    else:
+
+        # Zaxira: format kutilganidek kelmasa ham, foydalanuvchi
+        # hech bo'lmasa to'liq javobni ko'radi va uni video
+        # promptiga o'zi moslashtirishi mumkin.
+        analysis_part = full_text
+        prompt_part = full_text
+
+    for path in frame_paths:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+    return analysis_part, prompt_part
 
 
 # ============================================================
