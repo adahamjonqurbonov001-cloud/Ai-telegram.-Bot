@@ -206,15 +206,32 @@
       </div>
     </div>
 
+    <!-- Video Analyzer — video yuklab, undan prompt yaratish. -->
+    <div class="settings-row hidden" id="analyzerRow" style="display:flex;flex-direction:column;align-items:stretch;gap:8px;">
+      <div class="settings-label" id="analyzerLabel">Video tahlili</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button class="mini-chip" id="analyzeVideoBtn" type="button">🎥 Video tanlash</button>
+        <span id="analyzeVideoFileName" style="font-size:12px;opacity:0.8;"></span>
+      </div>
+      <input type="file" id="analyzeVideoInput" accept="video/*" class="hidden-input" />
+      <button
+        class="send-btn"
+        id="analyzeSubmitBtn"
+        type="button"
+        style="width:100%;border-radius:12px;padding:10px;"
+      >🔍 Tahlil qilish</button>
+    </div>
+
     <div class="mode-row" id="modeRow">
       <button class="mode-chip active" data-mode="text" id="modeTextBtn">💬 Matn</button>
       <button class="mode-chip" data-mode="image" id="modeImageBtn">🎨 Rasm</button>
       <button class="mode-chip" data-mode="video" id="modeVideoBtn">🎬 Video</button>
+      <button class="mode-chip" data-mode="analyze" id="modeAnalyzeBtn">🔍 Tahlil</button>
       <button class="mode-chip" data-mode="music" id="modeMusicBtn">🎵 Musiqa</button>
       <button class="mode-chip" data-mode="voice" id="modeVoiceBtn">🔊 Ovoz</button>
     </div>
 
-    <div class="input-row">
+    <div class="input-row" id="composerInputRow">
       <button class="icon-btn mic-btn hidden" id="micBtn" aria-label="Ovozli kiritish">🎤</button>
       <textarea
         id="messageInput"
