@@ -51,6 +51,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Video",
     modeMusic: "🎵 Musiqa",
     modeVoice: "🔊 Ovoz",
+    modeAnalyze: "🔍 Tahlil",
+    analyzerLabel: "Video tahlili",
+    analyzeVideoButton: "🎥 Video tanlash",
+    analyzeSubmitButton: "🔍 Tahlil qilish",
+    pendingAnalyze: "Video tahlil qilinmoqda…",
+    analyzerSentLabel: "Video tahlili so'raldi",
+    analyzerPromptLabel: "Yaratilgan prompt (tahrirlash mumkin):",
+    analyzerUseBtn: "🎬 Shu prompt bilan video yaratish",
     placeholderText: "Xabar yozing…",
     placeholderImage: "Qanday rasm chizay? Masalan: yolg'iz archa, qor bosgan tog'…",
     placeholderVideo: "Video uchun tavsif yozing…",
@@ -102,6 +110,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Видео",
     modeMusic: "🎵 Музыка",
     modeVoice: "🔊 Голос",
+    modeAnalyze: "🔍 Анализ",
+    analyzerLabel: "Анализ видео",
+    analyzeVideoButton: "🎥 Выбрать видео",
+    analyzeSubmitButton: "🔍 Анализировать",
+    pendingAnalyze: "Анализируем видео…",
+    analyzerSentLabel: "Запрошен анализ видео",
+    analyzerPromptLabel: "Созданный промпт (можно редактировать):",
+    analyzerUseBtn: "🎬 Создать видео по этому промпту",
     placeholderText: "Напишите сообщение…",
     placeholderImage: "Какое изображение нарисовать? Например: одинокая ель, заснеженная гора…",
     placeholderVideo: "Опишите видео…",
@@ -153,6 +169,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Видео",
     modeMusic: "🎵 Музыка",
     modeVoice: "🔊 Дауыс",
+    modeAnalyze: "🔍 Талдау",
+    analyzerLabel: "Видео талдауы",
+    analyzeVideoButton: "🎥 Видео таңдау",
+    analyzeSubmitButton: "🔍 Талдау",
+    pendingAnalyze: "Видео талдануда…",
+    analyzerSentLabel: "Видео талдауы сұралды",
+    analyzerPromptLabel: "Жасалған промпт (өзгертуге болады):",
+    analyzerUseBtn: "🎬 Осы промпт бойынша видео жасау",
     placeholderText: "Хабар жазыңыз…",
     placeholderImage: "Қандай сурет салайын? Мысалы: жалғыз шырша, қар басқан тау…",
     placeholderVideo: "Видео үшін сипаттама жазыңыз…",
@@ -204,6 +228,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Видео",
     modeMusic: "🎵 Мусиқӣ",
     modeVoice: "🔊 Садо",
+    modeAnalyze: "🔍 Таҳлил",
+    analyzerLabel: "Таҳлили видео",
+    analyzeVideoButton: "🎥 Интихоби видео",
+    analyzeSubmitButton: "🔍 Таҳлил кардан",
+    pendingAnalyze: "Видео таҳлил карда мешавад…",
+    analyzerSentLabel: "Таҳлили видео дархост шуд",
+    analyzerPromptLabel: "Прописи сохташуда (тағйирдиҳанда):",
+    analyzerUseBtn: "🎬 Бо ин промпт видео сохтан",
     placeholderText: "Паём нависед…",
     placeholderImage: "Чӣ хел расм кашам? Масалан: арчаи танҳо, кӯҳи барфпӯш…",
     placeholderVideo: "Барои видео тавсиф нависед…",
@@ -255,6 +287,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Видео",
     modeMusic: "🎵 Музыка",
     modeVoice: "🔊 Үн",
+    modeAnalyze: "🔍 Талдоо",
+    analyzerLabel: "Видео талдоо",
+    analyzeVideoButton: "🎥 Видео тандоо",
+    analyzeSubmitButton: "🔍 Талдоо",
+    pendingAnalyze: "Видео талдануда…",
+    analyzerSentLabel: "Видео талдоо сурулду",
+    analyzerPromptLabel: "Түзүлгөн промпт (өзгөртсө болот):",
+    analyzerUseBtn: "🎬 Ушул промпт менен видео түзүү",
     placeholderText: "Билдирүү жазыңыз…",
     placeholderImage: "Кандай сүрөт тартайын? Мисалы: жалгыз карагай, кар баскан тоо…",
     placeholderVideo: "Видео үчүн сүрөттөмө жазыңыз…",
@@ -306,6 +346,14 @@ const MINIAPP_I18N = {
     modeVideo: "🎬 Video",
     modeMusic: "🎵 Music",
     modeVoice: "🔊 Voice",
+    modeAnalyze: "🔍 Analyze",
+    analyzerLabel: "Video analysis",
+    analyzeVideoButton: "🎥 Choose video",
+    analyzeSubmitButton: "🔍 Analyze",
+    pendingAnalyze: "Analyzing video…",
+    analyzerSentLabel: "Video analysis requested",
+    analyzerPromptLabel: "Generated prompt (editable):",
+    analyzerUseBtn: "🎬 Generate video from this prompt",
     placeholderText: "Type a message…",
     placeholderImage: "What should I draw? E.g.: a lone pine tree, a snowy mountain…",
     placeholderVideo: "Describe the video…",
@@ -369,6 +417,13 @@ const voiceoverRow = document.getElementById("voiceoverRow");
 const voiceoverLabel = document.getElementById("voiceoverLabel");
 const voiceoverText = document.getElementById("voiceoverText");
 const voiceoverGenderChips = document.getElementById("voiceoverGenderChips");
+const analyzerRow = document.getElementById("analyzerRow");
+const analyzerLabel = document.getElementById("analyzerLabel");
+const analyzeVideoBtn = document.getElementById("analyzeVideoBtn");
+const analyzeVideoInput = document.getElementById("analyzeVideoInput");
+const analyzeVideoFileName = document.getElementById("analyzeVideoFileName");
+const analyzeSubmitBtn = document.getElementById("analyzeSubmitBtn");
+const composerInputRow = document.getElementById("composerInputRow");
 const videoFrameBtn = document.getElementById("videoFrameBtn");
 const videoFrameInput = document.getElementById("videoFrameInput");
 const videoFramePreviewWrap = document.getElementById("videoFramePreviewWrap");
@@ -406,6 +461,7 @@ const modeImageBtn = document.getElementById("modeImageBtn");
 const modeVideoBtn = document.getElementById("modeVideoBtn");
 const modeMusicBtn = document.getElementById("modeMusicBtn");
 const modeVoiceBtn = document.getElementById("modeVoiceBtn");
+const modeAnalyzeBtn = document.getElementById("modeAnalyzeBtn");
 const coinUnitLabel = document.getElementById("coinUnitLabel");
 
 // ============ STATE ============
@@ -435,6 +491,9 @@ let currentVoiceGender = "female";
 // MUHIM (YANGI): video+ovoz (voiceover) uchun tanlangan jins.
 // Alohida o'zgaruvchi — "Ovoz" rejimidagi tanlovdan mustaqil.
 let currentVoiceoverGender = "female";
+
+// MUHIM (YANGI): Video Analyzer uchun tanlangan video fayl.
+let selectedAnalyzeVideoFile = null;
 
 // Video+ovoz qaysi model kalitlarida ko'rinadi — server.py'dagi
 // VOICEOVER_ALLOWED_MODELS bilan bir xil bo'lishi shart.
@@ -494,6 +553,10 @@ function applyTranslations() {
   if (modeVideoBtn) modeVideoBtn.textContent = tr("modeVideo");
   if (modeMusicBtn) modeMusicBtn.textContent = tr("modeMusic");
   if (modeVoiceBtn) modeVoiceBtn.textContent = tr("modeVoice");
+  if (modeAnalyzeBtn) modeAnalyzeBtn.textContent = tr("modeAnalyze");
+  if (analyzerLabel) analyzerLabel.textContent = tr("analyzerLabel");
+  if (analyzeVideoBtn) analyzeVideoBtn.textContent = tr("analyzeVideoButton");
+  if (analyzeSubmitBtn) analyzeSubmitBtn.textContent = tr("analyzeSubmitButton");
 
   if (coinUnitLabel) coinUnitLabel.textContent = tr("coinUnit");
 
@@ -788,6 +851,106 @@ if (videoFrameRemoveBtn) {
   });
 }
 
+// ============ VIDEO ANALYZER ============
+//
+// MUHIM (YANGI): bu rejim oddiy handleSend() orqali emas, o'z
+// alohida tugmasi ("Tahlil qilish") orqali ishlaydi — chunki
+// bu yerda matn emas, video fayl yuboriladi.
+
+if (analyzeVideoBtn) {
+  analyzeVideoBtn.addEventListener("click", () => {
+    analyzeVideoInput.click();
+  });
+}
+
+if (analyzeVideoInput) {
+  analyzeVideoInput.addEventListener("change", () => {
+    const file = analyzeVideoInput.files[0];
+    if (!file) return;
+    selectedAnalyzeVideoFile = file;
+    if (analyzeVideoFileName) analyzeVideoFileName.textContent = file.name;
+  });
+}
+
+function appendAnalysisResultBubble(analysisText, promptText) {
+  const wrap = document.createElement("div");
+  wrap.className = "msg msg-bot";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const analysisEl = document.createElement("div");
+  analysisEl.style.cssText =
+    "font-size:12px;opacity:0.75;white-space:pre-wrap;margin-bottom:10px;";
+  analysisEl.textContent = analysisText;
+
+  const promptLabelEl = document.createElement("div");
+  promptLabelEl.style.cssText = "font-weight:600;margin-bottom:4px;";
+  promptLabelEl.textContent = tr("analyzerPromptLabel");
+
+  const promptTextarea = document.createElement("textarea");
+  promptTextarea.className = "message-input";
+  promptTextarea.value = promptText;
+  promptTextarea.rows = 4;
+  promptTextarea.style.cssText =
+    "display:block;width:100%;box-sizing:border-box;margin-bottom:8px;resize:none;";
+
+  const useBtn = document.createElement("button");
+  useBtn.type = "button";
+  useBtn.className = "send-btn";
+  useBtn.style.cssText = "width:100%;border-radius:12px;padding:10px;";
+  useBtn.textContent = tr("analyzerUseBtn");
+
+  useBtn.addEventListener("click", () => {
+    setMode("video");
+    messageInput.value = promptTextarea.value.trim();
+    messageInput.dispatchEvent(new Event("input"));
+    messageInput.focus();
+  });
+
+  bubble.appendChild(analysisEl);
+  bubble.appendChild(promptLabelEl);
+  bubble.appendChild(promptTextarea);
+  bubble.appendChild(useBtn);
+  wrap.appendChild(bubble);
+
+  messagesEl.appendChild(wrap);
+  scrollToBottom();
+}
+
+if (analyzeSubmitBtn) {
+  analyzeSubmitBtn.addEventListener("click", async () => {
+    if (!selectedAnalyzeVideoFile) return;
+
+    switchView("chat");
+    appendUserBubble("🔍 " + tr("analyzerSentLabel"));
+    const pending = appendPendingBubble(tr("pendingAnalyze"));
+
+    analyzeSubmitBtn.disabled = true;
+
+    try {
+      const form = new FormData();
+      form.append("init_data", initData);
+      form.append("video", selectedAnalyzeVideoFile);
+
+      const resp = await fetch("/api/analyze-video", { method: "POST", body: form });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
+
+      pending.remove();
+      appendAnalysisResultBubble(data.analysis, data.generated_prompt);
+      updateBalance(data.balance);
+    } catch (e) {
+      resolvePendingAsError(pending, e.message);
+    } finally {
+      analyzeSubmitBtn.disabled = false;
+      selectedAnalyzeVideoFile = null;
+      analyzeVideoInput.value = "";
+      if (analyzeVideoFileName) analyzeVideoFileName.textContent = "";
+    }
+  });
+}
+
 // ============ MODE SWITCHING ============
 
 function placeholderFor(mode) {
@@ -819,6 +982,14 @@ function setMode(mode) {
   if (imageSettingsRow) imageSettingsRow.classList.toggle("hidden", mode !== "image");
   if (videoModelRow) videoModelRow.classList.toggle("hidden", mode !== "video");
   if (voiceGenderRow) voiceGenderRow.classList.toggle("hidden", mode !== "voice");
+  if (analyzerRow) analyzerRow.classList.toggle("hidden", mode !== "analyze");
+
+  // MUHIM (YANGI): "Tahlil" rejimida oddiy matn kiritish qatori
+  // (textarea + yuborish tugmasi) yashiriladi — o'rniga video
+  // tanlash va "Tahlil qilish" tugmasi ko'rsatiladi (analyzerRow).
+  if (composerInputRow) {
+    composerInputRow.classList.toggle("hidden", mode === "analyze");
+  }
 
   if (mode === "video") {
     updateVideoControlsForModel();
