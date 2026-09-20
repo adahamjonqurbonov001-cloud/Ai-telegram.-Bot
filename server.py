@@ -50,6 +50,7 @@ from bot import (
     COIN_COST_STYLE,
     COIN_COST_TEXT,
     COIN_COST_VIDEO,
+    COIN_COST_VIDEO_ANALYZE,
     COIN_COST_VIDEO_IMAGE_EXTRA,
     COIN_COST_VIDEO_PRO_EXTRA,
     COIN_COST_VOICE,
@@ -66,6 +67,8 @@ from bot import (
     change_balance,
     claude_client,
     conversation_history,
+    analyze_video_with_claude,
+    extract_video_frames,
     generate_fal_image,
     generate_fal_music,
     generate_fal_video,
@@ -1048,6 +1051,95 @@ async def api_video_status(
     return job
 
 
+@api.post("/api/analyze-video")
+async def api_analyze_video(
+    init_data: str = Form(...),
+    video: UploadFile = None,
+):
+    """
+    MUHIM (YANGI): Video Analyzer. Yuklangan videodan ffmpeg
+    orqali bir necha kadr ajratiladi, so'ng Claude'ning ko'rish
+    (vision) qobiliyati orqali tahlil qilinib, video-generatsiya
+    modellari (Kling/Wan) uchun professional ingliz tilidagi
+    prompt yaratiladi. Bu sinxron (darhol javob qaytaradigan)
+    endpoint — chunki kadr ajratish + Claude tahlili odatda video
+    generatsiyasidan ANCHA tezroq (bir necha o'n soniya), shuning
+    uchun job/polling patterni shart emas.
+    """
+
+    user = verify_telegram_init_data(
+        init_data
+    )
+
+    chat_id = user["id"]
+
+    lang = get_lang(chat_id)
+
+    if video is None:
+        raise HTTPException(
+            status_code=400,
+            detail=t(lang, "video_missing"),
+        )
+
+    if get_balance(chat_id) < COIN_COST_VIDEO_ANALYZE:
+        raise HTTPException(
+            status_code=402,
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_VIDEO_ANALYZE,
+                balance=get_balance(chat_id),
+            ),
+        )
+
+    video_bytes = await video.read()
+
+    job_id = uuid.uuid4().hex
+
+    try:
+
+        frame_paths = await extract_video_frames(
+            video_bytes,
+            job_id,
+        )
+
+        if not frame_paths:
+            raise RuntimeError(
+                "ffmpeg kadr ajrata olmadi "
+                "(frame_paths bo'sh)"
+            )
+
+        analysis, generated_prompt = await analyze_video_with_claude(
+            frame_paths
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Mini App video tahlil xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "Mini App video tahlil qilish"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=t(lang, "video_analyze_error"),
+        )
+
+    new_balance = change_balance(
+        chat_id,
+        -COIN_COST_VIDEO_ANALYZE,
+    )
+
+    return {
+        "analysis": analysis,
+        "generated_prompt": generated_prompt,
+        "balance": new_balance,
+    }
+
+
 @api.post("/api/generate-music")
 async def api_generate_music(
     init_data: str = Form(...),
@@ -1335,4 +1427,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-                    )
+    )
