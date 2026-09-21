@@ -59,6 +59,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Video tahlili so'raldi",
     analyzerPromptLabel: "Yaratilgan prompt (tahrirlash mumkin):",
     analyzerUseBtn: "🎬 Shu prompt bilan video yaratish",
+    modeAiStudio: "🤖 AI Studio",
+    aiStudioLabel: "AI Studio — reklama video",
+    aiStudioPhotoButton: "📷 Mahsulot rasmi (ixtiyoriy)",
+    placeholderAiStudio: "Masalan: mahsulotim uchun qisqa reklama qil…",
+    pendingAiStudio: "🤖 AI Studio ishlamoqda…",
     placeholderText: "Xabar yozing…",
     placeholderImage: "Qanday rasm chizay? Masalan: yolg'iz archa, qor bosgan tog'…",
     placeholderVideo: "Video uchun tavsif yozing…",
@@ -118,6 +123,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Запрошен анализ видео",
     analyzerPromptLabel: "Созданный промпт (можно редактировать):",
     analyzerUseBtn: "🎬 Создать видео по этому промпту",
+    modeAiStudio: "🤖 AI Студия",
+    aiStudioLabel: "AI Студия — рекламное видео",
+    aiStudioPhotoButton: "📷 Фото товара (необязательно)",
+    placeholderAiStudio: "Например: сделай короткую рекламу моего товара…",
+    pendingAiStudio: "🤖 AI Студия работает…",
     placeholderText: "Напишите сообщение…",
     placeholderImage: "Какое изображение нарисовать? Например: одинокая ель, заснеженная гора…",
     placeholderVideo: "Опишите видео…",
@@ -177,6 +187,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Видео талдауы сұралды",
     analyzerPromptLabel: "Жасалған промпт (өзгертуге болады):",
     analyzerUseBtn: "🎬 Осы промпт бойынша видео жасау",
+    modeAiStudio: "🤖 AI Studio",
+    aiStudioLabel: "AI Studio — жарнама видео",
+    aiStudioPhotoButton: "📷 Тауар суреті (міндетті емес)",
+    placeholderAiStudio: "Мысалы: тауарым үшін қысқа жарнама жаса…",
+    pendingAiStudio: "🤖 AI Studio жұмыс істеуде…",
     placeholderText: "Хабар жазыңыз…",
     placeholderImage: "Қандай сурет салайын? Мысалы: жалғыз шырша, қар басқан тау…",
     placeholderVideo: "Видео үшін сипаттама жазыңыз…",
@@ -236,6 +251,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Таҳлили видео дархост шуд",
     analyzerPromptLabel: "Прописи сохташуда (тағйирдиҳанда):",
     analyzerUseBtn: "🎬 Бо ин промпт видео сохтан",
+    modeAiStudio: "🤖 AI Studio",
+    aiStudioLabel: "AI Studio — видеои реклама",
+    aiStudioPhotoButton: "📷 Расми мол (ихтиёрӣ)",
+    placeholderAiStudio: "Масалан: барои маҳсулотам рекламаи кӯтоҳ соз…",
+    pendingAiStudio: "🤖 AI Studio кор карда истодааст…",
     placeholderText: "Паём нависед…",
     placeholderImage: "Чӣ хел расм кашам? Масалан: арчаи танҳо, кӯҳи барфпӯш…",
     placeholderVideo: "Барои видео тавсиф нависед…",
@@ -295,6 +315,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Видео талдоо сурулду",
     analyzerPromptLabel: "Түзүлгөн промпт (өзгөртсө болот):",
     analyzerUseBtn: "🎬 Ушул промпт менен видео түзүү",
+    modeAiStudio: "🤖 AI Studio",
+    aiStudioLabel: "AI Studio — жарнама видео",
+    aiStudioPhotoButton: "📷 Товар сүрөтү (милдеттүү эмес)",
+    placeholderAiStudio: "Мисалы: товарым үчүн кыска жарнама жаса…",
+    pendingAiStudio: "🤖 AI Studio иштеп жатат…",
     placeholderText: "Билдирүү жазыңыз…",
     placeholderImage: "Кандай сүрөт тартайын? Мисалы: жалгыз карагай, кар баскан тоо…",
     placeholderVideo: "Видео үчүн сүрөттөмө жазыңыз…",
@@ -354,6 +379,11 @@ const MINIAPP_I18N = {
     analyzerSentLabel: "Video analysis requested",
     analyzerPromptLabel: "Generated prompt (editable):",
     analyzerUseBtn: "🎬 Generate video from this prompt",
+    modeAiStudio: "🤖 AI Studio",
+    aiStudioLabel: "AI Studio — ad video",
+    aiStudioPhotoButton: "📷 Product photo (optional)",
+    placeholderAiStudio: "E.g.: make a short ad for my product…",
+    pendingAiStudio: "🤖 AI Studio is working…",
     placeholderText: "Type a message…",
     placeholderImage: "What should I draw? E.g.: a lone pine tree, a snowy mountain…",
     placeholderVideo: "Describe the video…",
@@ -424,6 +454,15 @@ const analyzeVideoInput = document.getElementById("analyzeVideoInput");
 const analyzeVideoFileName = document.getElementById("analyzeVideoFileName");
 const analyzeSubmitBtn = document.getElementById("analyzeSubmitBtn");
 const composerInputRow = document.getElementById("composerInputRow");
+const modeAiStudioBtn = document.getElementById("modeAiStudioBtn");
+const aiStudioRow = document.getElementById("aiStudioRow");
+const aiStudioLabel = document.getElementById("aiStudioLabel");
+const aiStudioPhotoBtn = document.getElementById("aiStudioPhotoBtn");
+const aiStudioPhotoInput = document.getElementById("aiStudioPhotoInput");
+const aiStudioPhotoPreviewWrap = document.getElementById("aiStudioPhotoPreviewWrap");
+const aiStudioPhotoPreviewImg = document.getElementById("aiStudioPhotoPreviewImg");
+const aiStudioPhotoRemoveBtn = document.getElementById("aiStudioPhotoRemoveBtn");
+const aiStudioGenderChips = document.getElementById("aiStudioGenderChips");
 const videoFrameBtn = document.getElementById("videoFrameBtn");
 const videoFrameInput = document.getElementById("videoFrameInput");
 const videoFramePreviewWrap = document.getElementById("videoFramePreviewWrap");
@@ -495,6 +534,10 @@ let currentVoiceoverGender = "female";
 // MUHIM (YANGI): Video Analyzer uchun tanlangan video fayl.
 let selectedAnalyzeVideoFile = null;
 
+// MUHIM (YANGI): AI Studio uchun holat.
+let selectedAiStudioPhotoFile = null;
+let currentAiStudioGender = "female";
+
 // Video+ovoz qaysi model kalitlarida ko'rinadi — server.py'dagi
 // VOICEOVER_ALLOWED_MODELS bilan bir xil bo'lishi shart.
 const VOICEOVER_ALLOWED_MODELS = ["kling", "kling_pro"];
@@ -554,6 +597,9 @@ function applyTranslations() {
   if (modeMusicBtn) modeMusicBtn.textContent = tr("modeMusic");
   if (modeVoiceBtn) modeVoiceBtn.textContent = tr("modeVoice");
   if (modeAnalyzeBtn) modeAnalyzeBtn.textContent = tr("modeAnalyze");
+  if (modeAiStudioBtn) modeAiStudioBtn.textContent = tr("modeAiStudio");
+  if (aiStudioLabel) aiStudioLabel.textContent = tr("aiStudioLabel");
+  if (aiStudioPhotoBtn) aiStudioPhotoBtn.textContent = tr("aiStudioPhotoButton");
   if (analyzerLabel) analyzerLabel.textContent = tr("analyzerLabel");
   if (analyzeVideoBtn) analyzeVideoBtn.textContent = tr("analyzeVideoButton");
   if (analyzeSubmitBtn) analyzeSubmitBtn.textContent = tr("analyzeSubmitButton");
@@ -851,6 +897,81 @@ if (videoFrameRemoveBtn) {
   });
 }
 
+// ============ AI STUDIO ============
+//
+// MUHIM (YANGI): bu rejim ODDIY handleSend() orqali ishlaydi
+// (brief — oddiy matn kiritish qatoriga yoziladi), faqat
+// qo'shimcha ravishda mahsulot rasmi va ovoz jinsini oldindan
+// tanlab qo'yish mumkin.
+
+function clearAiStudioPhoto() {
+  selectedAiStudioPhotoFile = null;
+  if (aiStudioPhotoInput) aiStudioPhotoInput.value = "";
+  if (aiStudioPhotoPreviewWrap) aiStudioPhotoPreviewWrap.classList.add("hidden");
+  if (aiStudioPhotoPreviewImg) aiStudioPhotoPreviewImg.src = "";
+  if (aiStudioPhotoBtn) aiStudioPhotoBtn.classList.remove("hidden");
+}
+
+if (aiStudioPhotoBtn) {
+  aiStudioPhotoBtn.addEventListener("click", () => {
+    aiStudioPhotoInput.click();
+  });
+}
+
+if (aiStudioPhotoInput) {
+  aiStudioPhotoInput.addEventListener("change", () => {
+    const file = aiStudioPhotoInput.files[0];
+    if (!file) return;
+
+    selectedAiStudioPhotoFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      aiStudioPhotoPreviewImg.src = reader.result;
+
+      // MUHIM: xuddi video-frame'da bo'lgani kabi, o'lchamni
+      // !important bilan majburlaymiz — style.css'ga bog'liq
+      // bo'lmasligi uchun.
+      const forceStyle = (el, props) => {
+        Object.entries(props).forEach(([prop, value]) => {
+          el.style.setProperty(prop, value, "important");
+        });
+      };
+
+      forceStyle(aiStudioPhotoPreviewWrap, {
+        display: "block", width: "56px", height: "56px",
+        "max-width": "56px", "max-height": "56px",
+      });
+      forceStyle(aiStudioPhotoPreviewImg, {
+        display: "block", width: "56px", height: "56px",
+        "max-width": "56px", "max-height": "56px",
+        "object-fit": "cover", "border-radius": "10px",
+      });
+
+      aiStudioPhotoPreviewWrap.classList.remove("hidden");
+      aiStudioPhotoBtn.classList.add("hidden");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (aiStudioPhotoRemoveBtn) {
+  aiStudioPhotoRemoveBtn.addEventListener("click", () => {
+    clearAiStudioPhoto();
+  });
+}
+
+if (aiStudioGenderChips) {
+  aiStudioGenderChips.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-ai-studio-gender]");
+    if (!chip) return;
+    currentAiStudioGender = chip.dataset.aiStudioGender;
+    aiStudioGenderChips.querySelectorAll(".mini-chip").forEach((c) =>
+      c.classList.toggle("active", c === chip)
+    );
+  });
+}
+
 // ============ VIDEO ANALYZER ============
 //
 // MUHIM (YANGI): bu rejim oddiy handleSend() orqali emas, o'z
@@ -960,6 +1081,7 @@ function placeholderFor(mode) {
     video: tr("placeholderVideo"),
     music: tr("placeholderMusic"),
     voice: tr("placeholderVoice"),
+    ai_studio: tr("placeholderAiStudio"),
   };
   return map[mode] || tr("placeholderText");
 }
@@ -983,10 +1105,13 @@ function setMode(mode) {
   if (videoModelRow) videoModelRow.classList.toggle("hidden", mode !== "video");
   if (voiceGenderRow) voiceGenderRow.classList.toggle("hidden", mode !== "voice");
   if (analyzerRow) analyzerRow.classList.toggle("hidden", mode !== "analyze");
+  if (aiStudioRow) aiStudioRow.classList.toggle("hidden", mode !== "ai_studio");
 
   // MUHIM (YANGI): "Tahlil" rejimida oddiy matn kiritish qatori
   // (textarea + yuborish tugmasi) yashiriladi — o'rniga video
   // tanlash va "Tahlil qilish" tugmasi ko'rsatiladi (analyzerRow).
+  // "AI Studio" esa aksincha — oddiy matn qatori KERAK (brief
+  // yozish uchun), faqat ustiga aiStudioRow (rasm+ovoz) qo'shiladi.
   if (composerInputRow) {
     composerInputRow.classList.toggle("hidden", mode === "analyze");
   }
@@ -1135,9 +1260,12 @@ const VIDEO_POLL_INTERVAL_MS = 3000;
 // "Xatolik" ko'rsatgan, garchi server orqada hali ishlashi
 // mumkin edi. Endi 10 daqiqagacha kutamiz.
 const VIDEO_POLL_MAX_ATTEMPTS = 200; // ~10 daqiqa
+// AI Studio 3 ta sahnani ketma-ket yaratadi (har biri video+ovoz) —
+// oddiy videodan ancha uzoq davom etishi mumkin.
+const AI_STUDIO_POLL_MAX_ATTEMPTS = 500; // ~25 daqiqa
 
-async function pollVideoStatus(jobId, pendingBubbleEl) {
-  for (let attempt = 0; attempt < VIDEO_POLL_MAX_ATTEMPTS; attempt++) {
+async function pollVideoStatus(jobId, pendingBubbleEl, maxAttempts = VIDEO_POLL_MAX_ATTEMPTS) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, VIDEO_POLL_INTERVAL_MS));
 
     let data;
@@ -1165,6 +1293,18 @@ async function pollVideoStatus(jobId, pendingBubbleEl) {
 
     if (data.status === "error") {
       throw new Error(data.detail || tr("genericError"));
+    }
+
+    // MUHIM (YANGI): AI Studio kabi ko'p bosqichli jarayonlarda
+    // server "progress" maydonini yuboradi (masalan "Sahna 2/3
+    // yaratilmoqda...") — shuni "kutish" pufakchasida jonli
+    // ko'rsatamiz, foydalanuvchi jarayon davom etayotganini bilib
+    // tursin.
+    if (data.progress) {
+      const bubbleTextEl = pendingBubbleEl.querySelector(".bubble");
+      if (bubbleTextEl) {
+        bubbleTextEl.innerHTML = `<span class="dot-pulse"></span> ${data.progress}`;
+      }
     }
 
     // status === "pending" — davom etamiz
@@ -1276,6 +1416,21 @@ async function handleSend() {
       const audioUrl = "data:audio/mpeg;base64," + data.audio_base64;
       resolvePendingAsAudio(pending, audioUrl);
       updateBalance(data.balance);
+
+    } else if (currentMode === "ai_studio") {
+      const pending = appendPendingBubble(tr("pendingAiStudio"));
+      const form = new FormData();
+      form.append("init_data", initData);
+      form.append("brief", text);
+      form.append("voice_gender", currentAiStudioGender);
+      if (selectedAiStudioPhotoFile) {
+        form.append("product_photo", selectedAiStudioPhotoFile);
+      }
+      const resp = await fetch("/api/generate-ad-video", { method: "POST", body: form });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || tr("genericError"));
+      // MUHIM: AI Studio uchun uzoqroq kutish chegarasi ishlatiladi.
+      await pollVideoStatus(data.job_id, pending, AI_STUDIO_POLL_MAX_ATTEMPTS);
     }
 
     if (tg && tg.HapticFeedback) {
