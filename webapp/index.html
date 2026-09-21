@@ -222,11 +222,46 @@
       >🔍 Tahlil qilish</button>
     </div>
 
+    <!-- AI Studio — bitta jumladan ko'p sahnali reklama video. -->
+    <div
+      class="settings-row hidden"
+      id="aiStudioRow"
+      style="display:flex;flex-direction:column;align-items:stretch;gap:8px;"
+    >
+      <div class="settings-label" id="aiStudioLabel">AI Studio — reklama video</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button class="mini-chip" id="aiStudioPhotoBtn" type="button">📷 Mahsulot rasmi (ixtiyoriy)</button>
+        <div
+          class="frame-preview hidden"
+          id="aiStudioPhotoPreviewWrap"
+          style="position:relative;width:56px;height:56px;flex:0 0 56px;"
+        >
+          <img
+            id="aiStudioPhotoPreviewImg"
+            alt=""
+            style="display:block;width:56px;height:56px;object-fit:cover;border-radius:10px;"
+          />
+          <button
+            class="frame-remove-btn"
+            id="aiStudioPhotoRemoveBtn"
+            type="button"
+            style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:11px;line-height:1;cursor:pointer;padding:0;"
+          >✕</button>
+        </div>
+      </div>
+      <input type="file" id="aiStudioPhotoInput" accept="image/*" class="hidden-input" />
+      <div class="chip-scroll" id="aiStudioGenderChips" style="display:flex;">
+        <button class="mini-chip active" data-ai-studio-gender="female" id="aiStudioGenderFemaleBtn">👩 Ayol</button>
+        <button class="mini-chip" data-ai-studio-gender="male" id="aiStudioGenderMaleBtn">👨 Erkak</button>
+      </div>
+    </div>
+
     <div class="mode-row" id="modeRow">
       <button class="mode-chip active" data-mode="text" id="modeTextBtn">💬 Matn</button>
       <button class="mode-chip" data-mode="image" id="modeImageBtn">🎨 Rasm</button>
       <button class="mode-chip" data-mode="video" id="modeVideoBtn">🎬 Video</button>
       <button class="mode-chip" data-mode="analyze" id="modeAnalyzeBtn">🔍 Tahlil</button>
+      <button class="mode-chip" data-mode="ai_studio" id="modeAiStudioBtn">🤖 AI Studio</button>
       <button class="mode-chip" data-mode="music" id="modeMusicBtn">🎵 Musiqa</button>
       <button class="mode-chip" data-mode="voice" id="modeVoiceBtn">🔊 Ovoz</button>
     </div>
@@ -247,4 +282,4 @@
 
   <script src="app.js"></script>
 </body>
-</html>
+        </html>
