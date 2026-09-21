@@ -765,6 +765,437 @@ async def build_video_with_voiceover(
     return merged_path
 
 
+# ============================================================
+# AI STUDIO — bitta jumladan ko'p sahnali reklama video
+# ============================================================
+#
+# MUHIM (YANGI): foydalanuvchi qisqa brief yozadi (masalan
+# "mahsulotim uchun reklama qil"), ixtiyoriy ravishda mahsulot
+# rasmini qo'shadi. Claude shu asosda AI_STUDIO_SCENE_COUNT ta
+# sahna (har biri: vizual tavsif + diktor matni) rejalashtiradi.
+# Har bir sahna alohida video+ovoz sifatida yaratiladi (yuqoridagi
+# build_video_with_voiceover funksiyasi qayta ishlatiladi), so'ng
+# barchasi ffmpeg bilan bitta uzun videoga birlashtiriladi.
+#
+# Bu — butun loyihadagi eng uzoq davom etadigan amal (3 ta video
+# ketma-ket yaratiladi, har biri 1-3 daqiqa) — shuning uchun
+# video_jobs/polling infratuzilmasi qayta ishlatiladi, faqat
+# qo'shimcha "progress" maydoni bilan (foydalanuvchi qaysi
+# bosqichda ekanini ko'rishi uchun).
+
+AI_STUDIO_SCENE_COUNT = 3
+COIN_COST_AI_STUDIO = COIN_COST_VIDEO * AI_STUDIO_SCENE_COUNT
+
+
+async def plan_ad_scenes(
+    brief: str,
+    lang: str,
+    has_product_photo: bool,
+) -> list[dict]:
+    """
+    Claude'dan brief asosida AI_STUDIO_SCENE_COUNT ta sahna
+    (JSON ko'rinishida) so'raydi. Har bir sahna:
+        {"visual_prompt": "...", "voice_text": "..."}
+    """
+
+    lang_name = LANG_NAMES.get(lang, "o'zbek")
+
+    system_prompt = (
+        "You are a professional advertising creative director and "
+        "video prompt engineer. Given a short brief from a user, "
+        f"design EXACTLY {AI_STUDIO_SCENE_COUNT} short video scenes "
+        "(5 seconds each) that together form one compelling short "
+        "advertisement with a clear narrative arc (hook, product/"
+        "benefit, call to action).\n\n"
+        "Respond with ONLY valid JSON, no markdown formatting, no "
+        "explanation, in EXACTLY this shape:\n"
+        '{"scenes": [{"visual_prompt": "...", "voice_text": "..."}, '
+        '{"visual_prompt": "...", "voice_text": "..."}, '
+        '{"visual_prompt": "...", "voice_text": "..."}]}\n\n'
+        "Rules:\n"
+        '- "visual_prompt" MUST be written in English: vivid, '
+        "specific, optimized for an AI video generator (describe "
+        "subject, action, camera movement, lighting, mood).\n"
+        f'- "voice_text" MUST be written in {lang_name}: a short, '
+        "natural spoken narration line (under 15 words) for that "
+        "scene.\n"
+    )
+
+    if has_product_photo:
+        system_prompt += (
+            "- The user has provided a product photo that will be "
+            "used as the STARTING FRAME of the FIRST scene only — "
+            "write the first scene's visual_prompt so it makes sense "
+            "as an animation that begins from a static product "
+            "photo.\n"
+        )
+
+    response = await asyncio.to_thread(
+        claude_client.messages.create,
+        model=MODEL_NAME,
+        max_tokens=800,
+        system=system_prompt,
+        messages=[
+            {
+                "role": "user",
+                "content": brief,
+            }
+        ],
+    )
+
+    raw_text = "".join(
+        block.text
+        for block in response.content
+        if block.type == "text"
+    ).strip()
+
+    # MUHIM: Claude ba'zan JSON'ni ```json ... ``` bilan o'rab
+    # yuborishi mumkin — shuni tozalaymiz, aks holda json.loads
+    # xato beradi.
+    if raw_text.startswith("```"):
+        raw_text = raw_text.strip("`")
+        if raw_text.lower().startswith("json"):
+            raw_text = raw_text[4:]
+        raw_text = raw_text.strip()
+
+    data = json.loads(raw_text)
+
+    scenes = data.get("scenes")
+
+    if not isinstance(scenes, list) or not scenes:
+        raise ValueError(
+            "Claude sahnalarni kutilgan JSON "
+            "formatida qaytarmadi"
+        )
+
+    return scenes[:AI_STUDIO_SCENE_COUNT]
+
+
+async def concat_video_clips(
+    clip_paths: list[str],
+    job_id: str,
+) -> str:
+    """
+    Bir nechta lokal video faylni (har biri alohida sahna) ffmpeg
+    "concat" demuxeri orqali BITTA videoga birlashtiradi. Avval
+    tez ("-c copy") usul sinaladi — barcha kliplar bir xil
+    kodek/formatda bo'lsa (odatda shunday, chunki hammasi bitta
+    Kling modelidan keladi) darhol ishlaydi. Agar formatlar mos
+    kelmasa, qayta kodlash (sekinroq, lekin ishonchli) bilan
+    zaxira urinish qilinadi.
+    """
+
+    os.makedirs(MEDIA_TMP_DIR, exist_ok=True)
+
+    list_file_path = os.path.join(
+        MEDIA_TMP_DIR, f"concat_list_{job_id}.txt"
+    )
+    final_path = os.path.join(
+        MEDIA_TMP_DIR, f"ad_final_{job_id}.mp4"
+    )
+
+    with open(list_file_path, "w") as f:
+        for clip_path in clip_paths:
+            f.write(
+                f"file '{os.path.abspath(clip_path)}'\n"
+            )
+
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", list_file_path,
+        "-c", "copy",
+        final_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    _, stderr_bytes = await process.communicate()
+
+    if process.returncode != 0 or not os.path.exists(final_path):
+
+        # Zaxira urinish: qayta kodlash bilan
+        process2 = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", list_file_path,
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            final_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        _, stderr_bytes2 = await process2.communicate()
+
+        if process2.returncode != 0 or not os.path.exists(final_path):
+            error_text = stderr_bytes2.decode(
+                "utf-8", errors="ignore"
+            )[-800:]
+            raise RuntimeError(
+                f"ffmpeg birlashtirish (concat) xatosi: {error_text}"
+            )
+
+    try:
+        os.remove(list_file_path)
+    except Exception:
+        pass
+
+    asyncio.create_task(
+        _delete_media_file_later(
+            final_path,
+            MEDIA_CLEANUP_DELAY_SECONDS,
+        )
+    )
+
+    return final_path
+
+
+async def run_ai_studio_job(
+    job_id: str,
+    chat_id: int,
+    lang: str,
+    brief: str,
+    product_photo_bytes: bytes | None,
+    voice_gender: str,
+):
+    """
+    AI Studio'ning to'liq jarayoni: reja tuzish → har bir
+    sahnani video+ovoz sifatida yaratish → barchasini
+    birlashtirish. Har bosqichda video_jobs[job_id]["progress"]
+    yangilanadi — frontend buni polling paytida ko'rsatadi.
+    """
+
+    video_jobs[job_id]["progress"] = t(
+        lang, "ai_studio_planning"
+    )
+
+    try:
+
+        scenes = await plan_ad_scenes(
+            brief,
+            lang,
+            product_photo_bytes is not None,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "AI Studio reja tuzish xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "AI Studio — reja tuzish"
+        )
+
+        video_jobs[job_id] = {
+            "status": "error",
+            "detail": t(lang, "ai_studio_error"),
+        }
+
+        return
+
+    scene_clip_paths: list[str] = []
+
+    try:
+
+        for idx, scene in enumerate(scenes):
+
+            video_jobs[job_id]["progress"] = t(
+                lang,
+                "ai_studio_scene_progress",
+                current=idx + 1,
+                total=len(scenes),
+            )
+
+            visual_prompt = (
+                scene.get("visual_prompt") or ""
+            ).strip()
+            voice_text = (
+                scene.get("voice_text") or ""
+            ).strip()
+
+            if not visual_prompt:
+                continue
+
+            # Faqat BIRINCHI sahnada mahsulot rasmi bor bo'lsa,
+            # uni boshlang'ich kadr sifatida ishlatamiz.
+            scene_image_bytes = (
+                product_photo_bytes
+                if (idx == 0 and product_photo_bytes)
+                else None
+            )
+
+            scene_video_url = await generate_fal_video(
+                visual_prompt,
+                "kling",
+                aspect_ratio="9:16",
+                duration="5",
+                image_bytes=scene_image_bytes,
+            )
+
+            if not scene_video_url:
+                continue
+
+            if voice_text:
+
+                try:
+
+                    merged_path = await build_video_with_voiceover(
+                        scene_video_url,
+                        voice_text,
+                        lang,
+                        voice_gender,
+                        f"{job_id}_scene{idx}",
+                    )
+
+                    scene_clip_paths.append(merged_path)
+
+                    continue
+
+                except Exception:
+
+                    logger.exception(
+                        f"AI Studio sahna {idx} ovoz xatosi "
+                        "(ovozsiz davom etiladi):"
+                    )
+
+            # Ovoz bo'lmasa (yoki ovoz xato bersa), sahna videosini
+            # baribir LOKAL faylga yuklab olamiz — concat faqat
+            # lokal fayllar bilan ishlaydi.
+            raw_scene_path = os.path.join(
+                MEDIA_TMP_DIR,
+                f"scene_{job_id}_{idx}.mp4",
+            )
+
+            os.makedirs(MEDIA_TMP_DIR, exist_ok=True)
+
+            async with httpx.AsyncClient(timeout=120) as client:
+
+                scene_resp = await client.get(scene_video_url)
+                scene_resp.raise_for_status()
+
+                with open(raw_scene_path, "wb") as f:
+                    f.write(scene_resp.content)
+
+            scene_clip_paths.append(raw_scene_path)
+
+        if not scene_clip_paths:
+            raise RuntimeError(
+                "Hech qanday sahna muvaffaqiyatli "
+                "yaratilmadi"
+            )
+
+        video_jobs[job_id]["progress"] = t(
+            lang, "ai_studio_merging"
+        )
+
+        final_path = await concat_video_clips(
+            scene_clip_paths,
+            job_id,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "AI Studio generatsiya xatosi:"
+        )
+
+        await notify_admin_error_miniapp(
+            "AI Studio — generatsiya"
+        )
+
+        video_jobs[job_id] = {
+            "status": "error",
+            "detail": t(lang, "ai_studio_error"),
+        }
+
+        return
+
+    finally:
+
+        for p in scene_clip_paths:
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+
+    new_balance = change_balance(
+        chat_id,
+        -COIN_COST_AI_STUDIO,
+    )
+
+    video_jobs[job_id] = {
+        "status": "done",
+        "video_url": f"/api/media/{os.path.basename(final_path)}",
+        "balance": new_balance,
+        "cost": COIN_COST_AI_STUDIO,
+    }
+
+
+@api.post("/api/generate-ad-video")
+async def api_generate_ad_video(
+    init_data: str = Form(...),
+    brief: str = Form(...),
+    voice_gender: str = Form("female"),
+    product_photo: UploadFile = None,
+):
+    """
+    AI Studio kirish nuqtasi. Darhol job_id qaytaradi (huddi
+    /api/generate-video kabi) — haqiqiy jarayon run_ai_studio_job
+    orqali orqa fonda davom etadi. Frontend /api/video-status
+    (bir xil endpoint!) orqali polling qiladi.
+    """
+
+    user = verify_telegram_init_data(
+        init_data
+    )
+
+    chat_id = user["id"]
+
+    lang = get_lang(chat_id)
+
+    if get_balance(chat_id) < COIN_COST_AI_STUDIO:
+        raise HTTPException(
+            status_code=402,
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=COIN_COST_AI_STUDIO,
+                balance=get_balance(chat_id),
+            ),
+        )
+
+    product_photo_bytes = None
+
+    if product_photo is not None:
+        product_photo_bytes = await product_photo.read()
+
+    job_id = uuid.uuid4().hex
+
+    video_jobs[job_id] = {
+        "status": "pending",
+        "chat_id": chat_id,
+        "progress": t(lang, "ai_studio_planning"),
+    }
+
+    asyncio.create_task(
+        run_ai_studio_job(
+            job_id,
+            chat_id,
+            lang,
+            brief,
+            product_photo_bytes,
+            voice_gender,
+        )
+    )
+
+    return {
+        "job_id": job_id,
+        "cost": COIN_COST_AI_STUDIO,
+    }
+
+
 @api.get("/api/media/{filename}")
 async def api_get_media(filename: str):
     """
