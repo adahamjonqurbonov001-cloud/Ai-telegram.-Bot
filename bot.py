@@ -771,6 +771,51 @@ STYLE_TEMPLATES = {
             "professional car advertisement style. "
             "Preserve the original car."
         ),
+        "thumbnail": "/thumbs/cinematic_car.jpg",
+    },
+
+    "drift_racer": {
+        "prompt": (
+            "Transform the provided photo into a professional "
+            "motorsport portrait: the person wearing a racing "
+            "suit and holding a helmet, standing beside a "
+            "modified sports car with dramatic tire smoke "
+            "billowing in the background, motorsport event "
+            "atmosphere with blurred banners and spectators, "
+            "golden hour lighting, professional sports "
+            "photography. Preserve the person's identity and "
+            "facial features."
+        ),
+        "thumbnail": "/thumbs/drift_racer.jpg",
+    },
+
+    "grand_prix_driver": {
+        "prompt": (
+            "Transform the provided photo into a professional "
+            "open-wheel racing driver portrait: the person "
+            "wearing a modern racing suit covered in generic "
+            "sponsor-style patches, seated confidently in a "
+            "pit lane with a racing helmet resting on their "
+            "knee, an open-wheel race car and pit garage "
+            "blurred in the background, bright daylight, "
+            "professional sports photography. Preserve the "
+            "person's identity and facial features. Do not "
+            "reproduce any real brand names or logos."
+        ),
+        "thumbnail": "/thumbs/grand_prix_driver.jpg",
+    },
+
+    "moody_studio_portrait": {
+        "prompt": (
+            "Transform the provided photo into a dramatic "
+            "studio portrait: moody dark blue background, "
+            "warm orange rim light tracing one side of the "
+            "face and shoulder, three-quarter angled pose, "
+            "shallow depth of field, high-end editorial "
+            "photography style. Preserve the person's "
+            "identity, facial features, and clothing."
+        ),
+        "thumbnail": "/thumbs/moody_studio_portrait.jpg",
     },
 
     "vintage_sketch": {
