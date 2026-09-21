@@ -533,6 +533,38 @@ TEXTS = {
         "ky": "Кечиресиз, видеону талдоодо ката кетти. Монета алынган жок. Кийинчерээк кайра аракет кылыңыз.",
         "en": "Sorry, an error occurred while analyzing the video. Coins weren't deducted. Try again later.",
     },
+    "ai_studio_planning": {
+        "uz": "🤖 Ssenariy yozilmoqda...",
+        "ru": "🤖 Пишем сценарий...",
+        "kk": "🤖 Сценарий жазылуда...",
+        "tg": "🤖 Скрипт навишта мешавад...",
+        "ky": "🤖 Сценарий жазылууда...",
+        "en": "🤖 Writing the script...",
+    },
+    "ai_studio_scene_progress": {
+        "uz": "🎬 Sahna {current}/{total} yaratilmoqda...",
+        "ru": "🎬 Создаём сцену {current}/{total}...",
+        "kk": "🎬 {current}/{total} көрініс жасалуда...",
+        "tg": "🎬 Саҳнаи {current}/{total} сохта мешавад...",
+        "ky": "🎬 {current}/{total} көрүнүш түзүлүүдө...",
+        "en": "🎬 Generating scene {current}/{total}...",
+    },
+    "ai_studio_merging": {
+        "uz": "🎞 Sahnalar birlashtirilmoqda...",
+        "ru": "🎞 Объединяем сцены...",
+        "kk": "🎞 Көріністер біріктірілуде...",
+        "tg": "🎞 Саҳнаҳо муттаҳид карда мешаванд...",
+        "ky": "🎞 Көрүнүштөр бириктирилүүдө...",
+        "en": "🎞 Merging scenes...",
+    },
+    "ai_studio_error": {
+        "uz": "Kechirasiz, AI Studio reklama yaratishda xatolik yuz berdi. Coin yechilmadi. Birozdan so'ng qayta urinib ko'ring.",
+        "ru": "Извините, при создании рекламы в AI Studio произошла ошибка. Монеты не списаны. Попробуйте позже.",
+        "kk": "Кешіріңіз, AI Studio жарнама жасауда қате орын алды. Тиын шегерілмеді. Кейінірек қайталап көріңіз.",
+        "tg": "Мебахшед, ҳангоми сохтани реклама дар AI Studio хато рӯй дод. Танга кам нашуд. Баъдтар бозоӣ кунед.",
+        "ky": "Кечиресиз, AI Studio жарнама түзүүдө ката кетти. Монета алынган жок. Кийинчерээк кайра аракет кылыңыз.",
+        "en": "Sorry, an error occurred while creating the AI Studio ad. Coins weren't deducted. Try again later.",
+    },
 }
 
 
