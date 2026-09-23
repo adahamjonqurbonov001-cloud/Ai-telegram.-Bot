@@ -454,6 +454,11 @@ const analyzeVideoInput = document.getElementById("analyzeVideoInput");
 const analyzeVideoFileName = document.getElementById("analyzeVideoFileName");
 const analyzeSubmitBtn = document.getElementById("analyzeSubmitBtn");
 const composerInputRow = document.getElementById("composerInputRow");
+const attachPhotoBtn = document.getElementById("attachPhotoBtn");
+const attachPhotoInput = document.getElementById("attachPhotoInput");
+const attachPhotoPreviewWrap = document.getElementById("attachPhotoPreviewWrap");
+const attachPhotoPreviewImg = document.getElementById("attachPhotoPreviewImg");
+const attachPhotoRemoveBtn = document.getElementById("attachPhotoRemoveBtn");
 const modeAiStudioBtn = document.getElementById("modeAiStudioBtn");
 const aiStudioRow = document.getElementById("aiStudioRow");
 const aiStudioLabel = document.getElementById("aiStudioLabel");
@@ -537,6 +542,10 @@ let selectedAnalyzeVideoFile = null;
 // MUHIM (YANGI): AI Studio uchun holat.
 let selectedAiStudioPhotoFile = null;
 let currentAiStudioGender = "female";
+
+// MUHIM (YANGI): "Matn" rejimida rasm tahrirlash uchun
+// biriktirilgan fayl.
+let selectedAttachPhotoFile = null;
 
 // Video+ovoz qaysi model kalitlarida ko'rinadi — server.py'dagi
 // VOICEOVER_ALLOWED_MODELS bilan bir xil bo'lishi shart.
@@ -897,6 +906,69 @@ if (videoFrameRemoveBtn) {
   });
 }
 
+// ============ RASM BIRIKTIRISH ("Matn" rejimida tahrirlash) ============
+//
+// MUHIM (YANGI): foydalanuvchi "Matn" rejimida rasm biriktirib,
+// pastga erkin buyruq yozsa ("bu rasmni ..."), handleSend()
+// buni /api/chat'ga "photo" maydoni bilan yuboradi — server esa
+// Claude'ning tool-tanlashini o'tkazib yuborib, to'g'ridan-
+// to'g'ri rasmni tahrirlaydi (yuqoriga, server.py'ga qarang).
+
+function clearAttachPhoto() {
+  selectedAttachPhotoFile = null;
+  if (attachPhotoInput) attachPhotoInput.value = "";
+  if (attachPhotoPreviewWrap) attachPhotoPreviewWrap.classList.add("hidden");
+  if (attachPhotoPreviewImg) attachPhotoPreviewImg.src = "";
+}
+
+if (attachPhotoBtn) {
+  attachPhotoBtn.addEventListener("click", () => {
+    attachPhotoInput.click();
+  });
+}
+
+if (attachPhotoInput) {
+  attachPhotoInput.addEventListener("change", () => {
+    const file = attachPhotoInput.files[0];
+    if (!file) return;
+
+    selectedAttachPhotoFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      attachPhotoPreviewImg.src = reader.result;
+
+      // MUHIM: xuddi boshqa önizleme'larda bo'lgani kabi,
+      // o'lchamni !important bilan majburlaymiz — style.css'ga
+      // bog'liq bo'lmasligi uchun.
+      const forceStyle = (el, props) => {
+        Object.entries(props).forEach(([prop, value]) => {
+          el.style.setProperty(prop, value, "important");
+        });
+      };
+
+      forceStyle(attachPhotoPreviewWrap, {
+        display: "block", width: "44px", height: "44px",
+        "max-width": "44px", "max-height": "44px",
+      });
+      forceStyle(attachPhotoPreviewImg, {
+        display: "block", width: "44px", height: "44px",
+        "max-width": "44px", "max-height": "44px",
+        "object-fit": "cover", "border-radius": "10px",
+      });
+
+      attachPhotoPreviewWrap.classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (attachPhotoRemoveBtn) {
+  attachPhotoRemoveBtn.addEventListener("click", () => {
+    clearAttachPhoto();
+  });
+}
+
 // ============ AI STUDIO ============
 //
 // MUHIM (YANGI): bu rejim ODDIY handleSend() orqali ishlaydi
@@ -1116,6 +1188,17 @@ function setMode(mode) {
     composerInputRow.classList.toggle("hidden", mode === "analyze");
   }
 
+  // MUHIM (YANGI): rasm biriktirish tugmasi faqat "Matn"
+  // rejimida ko'rinadi. Boshqa rejimga o'tilganda, biriktirilgan
+  // rasm (agar bor bo'lsa) tozalanadi — chunki u faqat "Matn"
+  // rejimidagi tahrirlash oqimiga tegishli.
+  if (attachPhotoBtn) {
+    attachPhotoBtn.classList.toggle("hidden", mode !== "text");
+  }
+  if (mode !== "text") {
+    clearAttachPhoto();
+  }
+
   if (mode === "video") {
     updateVideoControlsForModel();
   } else {
@@ -1315,24 +1398,50 @@ async function pollVideoStatus(jobId, pendingBubbleEl, maxAttempts = VIDEO_POLL_
 
 async function handleSend() {
   const text = messageInput.value.trim();
-  if (!text) return;
+
+  // MUHIM (YANGI): agar rasm biriktirilgan bo'lsa, matn bo'sh
+  // bo'lsa ham yuborishga ruxsat beramiz (server o'zi umumiy
+  // "yaxshilash" buyrug'ini ishlatadi). Aks holda, avvalgidek,
+  // bo'sh matn yuborilmaydi.
+  if (!text && !(currentMode === "text" && selectedAttachPhotoFile)) return;
 
   messageInput.value = "";
   messageInput.style.height = "auto";
   sendBtn.disabled = true;
 
-  appendUserBubble(text);
+  appendUserBubble(text || "📎");
 
   try {
     if (currentMode === "text") {
-      const pending = appendPendingBubble(tr("pendingText"));
+      const pending = appendPendingBubble(
+        selectedAttachPhotoFile ? tr("pendingImage") : tr("pendingText")
+      );
       const form = new FormData();
       form.append("init_data", initData);
       form.append("message", text);
+      if (selectedAttachPhotoFile) {
+        form.append("photo", selectedAttachPhotoFile);
+      }
       const resp = await fetch("/api/chat", { method: "POST", body: form });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || tr("genericError"));
-      resolvePendingAsText(pending, data.reply);
+
+      // MUHIM (YANGI): endi /api/chat "kind" maydoniga qarab
+      // matn, rasm, musiqa yoki ovoz qaytarishi mumkin — Claude
+      // xabarni o'qib, kerakli vositani o'zi tanlaydi (masalan
+      // "kuchukcha rasmini chiz" desangiz, avtomatik rasm
+      // yaratiladi, rejim almashtirish shart emas).
+      if (data.kind === "image") {
+        resolvePendingAsImage(pending, data.image_url);
+      } else if (data.kind === "music") {
+        resolvePendingAsAudio(pending, data.audio_url);
+      } else if (data.kind === "voice") {
+        const audioUrl = "data:audio/mpeg;base64," + data.audio_base64;
+        resolvePendingAsAudio(pending, audioUrl);
+      } else {
+        resolvePendingAsText(pending, data.reply);
+      }
+
       updateBalance(data.balance);
 
     } else if (currentMode === "image") {
@@ -1444,6 +1553,7 @@ async function handleSend() {
     }
   } finally {
     sendBtn.disabled = false;
+    clearAttachPhoto();
   }
 }
 
