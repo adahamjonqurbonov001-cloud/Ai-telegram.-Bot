@@ -266,8 +266,21 @@
       <button class="mode-chip" data-mode="voice" id="modeVoiceBtn">🔊 Ovoz</button>
     </div>
 
+    <!-- Rasm biriktirish (faqat "Matn" rejimida ko'rinadi) —
+         erkin buyruq bilan mavjud rasmni tahrirlash uchun. -->
+    <div class="frame-preview hidden" id="attachPhotoPreviewWrap" style="position:relative;width:44px;height:44px;flex:0 0 44px;margin:0 4px;">
+      <img id="attachPhotoPreviewImg" alt="" style="display:block;width:44px;height:44px;object-fit:cover;border-radius:10px;" />
+      <button
+        class="frame-remove-btn"
+        id="attachPhotoRemoveBtn"
+        type="button"
+        style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:10px;line-height:1;cursor:pointer;padding:0;"
+      >✕</button>
+    </div>
+
     <div class="input-row" id="composerInputRow">
       <button class="icon-btn mic-btn hidden" id="micBtn" aria-label="Ovozli kiritish">🎤</button>
+      <button class="icon-btn hidden" id="attachPhotoBtn" aria-label="Rasm biriktirish">📎</button>
       <textarea
         id="messageInput"
         class="message-input"
@@ -278,8 +291,9 @@
     </div>
   </footer>
 
-  <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden-input" />
+  <input type="file" id="photoInput" accept="image/*" class="hidden-input" />
+  <input type="file" id="attachPhotoInput" accept="image/*" class="hidden-input" />
 
   <script src="app.js"></script>
 </body>
-        </html>
+</html>
