@@ -565,6 +565,14 @@ TEXTS = {
         "ky": "Кечиресиз, AI Studio жарнама түзүүдө ката кетти. Монета алынган жок. Кийинчерээк кайра аракет кылыңыз.",
         "en": "Sorry, an error occurred while creating the AI Studio ad. Coins weren't deducted. Try again later.",
     },
+    "image_edit_error": {
+        "uz": "Kechirasiz, rasmni tahrirlashda xatolik yuz berdi. Coin yechilmadi. Birozdan so'ng qayta urinib ko'ring.",
+        "ru": "Извините, при редактировании изображения произошла ошибка. Монеты не списаны. Попробуйте позже.",
+        "kk": "Кешіріңіз, суретті өңдеуде қате орын алды. Тиын шегерілмеді. Кейінірек қайталап көріңіз.",
+        "tg": "Мебахшед, ҳангоми таҳрири расм хато рӯй дод. Танга кам нашуд. Баъдтар бозоӣ кунед.",
+        "ky": "Кечиресиз, сүрөттү оңдоодо ката кетти. Монета алынган жок. Кийинчерээк кайра аракет кылыңыз.",
+        "en": "Sorry, an error occurred while editing the image. Coins weren't deducted. Try again later.",
+    },
 }
 
 
@@ -743,4 +751,4 @@ def style_label(style_id: str, lang: str) -> str:
         labels.get(lang)
         or labels.get(DEFAULT_LANGUAGE)
         or style_id
-    )
+)
