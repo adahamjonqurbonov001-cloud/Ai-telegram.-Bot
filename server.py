@@ -66,8 +66,10 @@ from bot import (
     build_application,
     change_balance,
     claude_client,
+    classify_and_maybe_generate,
     conversation_history,
     analyze_video_with_claude,
+    edit_image_with_instruction,
     extract_video_frames,
     generate_fal_image,
     generate_fal_music,
@@ -472,8 +474,27 @@ async def api_apply_style(
 @api.post("/api/chat")
 async def api_chat(
     init_data: str = Form(...),
-    message: str = Form(...),
+    message: str = Form(""),
+    photo: UploadFile = None,
 ):
+    """
+    MUHIM (YANGI): endi bu endpoint "Agent" xatti-harakatini
+    qo'llab-quvvatladi — oddiy matn javobi o'rniga, agar
+    Claude foydalanuvchi xabarida aniq rasm/musiqa/ovoz
+    so'rovini aniqlasa, mos generatsiyani AVTOMATIK ishga
+    tushiradi (classify_and_maybe_generate — bot.py'da,
+    Telegram bilan bir xil funksiya). Javob shakli endi
+    "kind" maydoni bilan farqlanadi: "text" / "image" /
+    "music" / "voice".
+
+    MUHIM (YANA YANGI): agar so'rovga "photo" biriktirilgan
+    bo'lsa, Claude'ning tool-tanlash bosqichi UMUMAN
+    o'tkazib yuboriladi — bu holatda niyat aniq (mavjud
+    rasmni "message" matnidagi ko'rsatmaga ko'ra tahrirlash),
+    shuning uchun to'g'ridan-to'g'ri edit_image_with_instruction
+    chaqiriladi (xuddi "Tayyor stillar"dagi bilan bir xil
+    fal.ai modeli, faqat tayyor shablon o'rniga erkin buyruq).
+    """
 
     user = verify_telegram_init_data(
         init_data
@@ -482,6 +503,88 @@ async def api_chat(
     chat_id = user["id"]
 
     lang = get_lang(chat_id)
+
+    # --------------------------------------------------------
+    # RASM BIRIKTIRILGAN BO'LSA — TAHRIRLASH YO'LI
+    # --------------------------------------------------------
+    if photo is not None:
+
+        if get_balance(chat_id) < COIN_COST_STYLE:
+            raise HTTPException(
+                status_code=402,
+                detail=t(
+                    lang,
+                    "insufficient_coins",
+                    cost=COIN_COST_STYLE,
+                    balance=get_balance(chat_id),
+                ),
+            )
+
+        photo_bytes = await photo.read()
+
+        edit_instruction = message.strip() or (
+            "Enhance and improve this photo's overall quality "
+            "while keeping everything else unchanged."
+        )
+
+        try:
+
+            result_url = await edit_image_with_instruction(
+                photo_bytes,
+                edit_instruction,
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Mini App rasm tahrirlash xatosi:"
+            )
+
+            await notify_admin_error_miniapp(
+                "Mini App chat — rasm tahrirlash"
+            )
+
+            raise HTTPException(
+                status_code=500,
+                detail=t(lang, "image_edit_error"),
+            )
+
+        if not result_url:
+            raise HTTPException(
+                status_code=500,
+                detail=t(lang, "no_result"),
+            )
+
+        history = conversation_history.get(
+            chat_id, []
+        )
+
+        history.append(
+            {
+                "role": "user",
+                "content": f"[Sent a photo] {edit_instruction}",
+            }
+        )
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": f"[Edited the photo: {edit_instruction}]",
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -COIN_COST_STYLE,
+        )
+
+        return {
+            "kind": "image",
+            "image_url": result_url,
+            "balance": new_balance,
+        }
 
     if get_balance(chat_id) < COIN_COST_TEXT:
         raise HTTPException(
@@ -511,40 +614,23 @@ async def api_chat(
             -MAX_HISTORY_MESSAGES:
         ]
 
-    lang_name = LANG_NAMES.get(
+    result = await classify_and_maybe_generate(
+        chat_id,
+        message,
         lang,
-        "o'zbek",
+        history,
     )
 
-    dynamic_system_prompt = (
-        SYSTEM_PROMPT
-        + f" Javobingizni {lang_name} "
-        "tilida yozing."
-    )
+    if result["type"] == "error":
 
-    try:
-
-        response = claude_client.messages.create(
-            model=MODEL_NAME,
-            max_tokens=1024,
-            system=dynamic_system_prompt,
-            messages=history,
-        )
-
-        reply_text = "".join(
-            block.text
-            for block in response.content
-            if block.type == "text"
-        )
-
-    except Exception:
-
-        logger.exception(
-            "Mini App chat xatosi:"
+        logger.error(
+            "Mini App agent xatosi "
+            "(classify_and_maybe_generate "
+            "'error' qaytardi)"
         )
 
         await notify_admin_error_miniapp(
-            "Mini App chat"
+            "Mini App chat (agent)"
         )
 
         conversation_history[chat_id] = history
@@ -554,24 +640,127 @@ async def api_chat(
             detail=t(lang, "text_error"),
         )
 
-    history.append(
-        {
-            "role": "assistant",
-            "content": reply_text,
-        }
-    )
+    if result["type"] == "insufficient_coins":
 
+        # Foydalanuvchi xabari tarixda qoladi — coin to'ldirib,
+        # qayta yozganda kontekst yo'qolmaydi.
+        conversation_history[chat_id] = history
+
+        raise HTTPException(
+            status_code=402,
+            detail=t(
+                lang,
+                "insufficient_coins",
+                cost=result["cost"],
+                balance=get_balance(chat_id),
+            ),
+        )
+
+    if result["type"] == "text":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": result["text"],
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        return {
+            "kind": "text",
+            "reply": result["text"],
+            "balance": new_balance,
+        }
+
+    if result["type"] == "image":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated an image: {result['prompt']}]"
+                ),
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        return {
+            "kind": "image",
+            "image_url": result["url"],
+            "balance": new_balance,
+        }
+
+    if result["type"] == "music":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated music: {result['prompt']}]"
+                ),
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        return {
+            "kind": "music",
+            "audio_url": result["url"],
+            "balance": new_balance,
+        }
+
+    if result["type"] == "voice":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated voice for: {result['text']}]"
+                ),
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        audio_b64 = base64.b64encode(
+            result["audio_bytes"]
+        ).decode("ascii")
+
+        return {
+            "kind": "voice",
+            "audio_base64": audio_b64,
+            "balance": new_balance,
+        }
+
+    # Kutilmagan holat — amalda yuzaga kelmasligi kerak.
     conversation_history[chat_id] = history
 
-    new_balance = change_balance(
-        chat_id,
-        -COIN_COST_TEXT,
+    raise HTTPException(
+        status_code=500,
+        detail=t(lang, "text_error"),
     )
-
-    return {
-        "reply": reply_text,
-        "balance": new_balance,
-    }
 
 
 @api.post("/api/generate-image")
@@ -1858,4 +2047,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-    )
+        )
