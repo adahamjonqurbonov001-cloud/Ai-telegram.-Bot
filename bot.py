@@ -38,10 +38,12 @@ import logging
 import traceback
 import base64
 import re
+import time
 
 import httpx
 import fal_client
 import edge_tts
+from PIL import Image
 
 from i18n import t, LANGUAGES, DEFAULT_LANGUAGE, style_label
 
@@ -311,6 +313,351 @@ SYSTEM_PROMPT = (
 )
 
 MAX_HISTORY_MESSAGES = 20
+
+# Claude uchun til nomlari — "Javobingizni {lang_name} tilida
+# yozing" ko'rsatmasida ishlatiladi. Bir nechta joyda (oddiy
+# chat, agent yo'naltiruvchisi) qayta ishlatiladi.
+LANG_NAMES = {
+    "uz": "o'zbek",
+    "ru": "русском",
+    "kk": "қазақ",
+    "tg": "тоҷикӣ",
+    "ky": "кыргыз",
+    "en": "English",
+}
+
+
+# ============================================================
+# AGENT — MATNDAN AVTOMATIK TOOL TANLASH
+# ============================================================
+#
+# MUHIM (YANGI): foydalanuvchi oddiy matn yozganda (rejim
+# tanlamasdan), Claude endi shu matnni ko'rib, agar u aniq
+# ravishda rasm/musiqa/ovoz so'rayotgan bo'lsa, MOS FUNKSIYANI
+# O'ZI chaqiradi — foydalanuvchi qo'lda rejim almashtirishi
+# shart emas. Bu Anthropic API'ning rasmiy "tool use" (function
+# calling) imkoniyati orqali amalga oshiriladi — Claude
+# tool_use qaytarsa, biz o'sha tool nomiga mos ravishda
+# generate_fal_image/generate_fal_music/edge-tts funksiyalarini
+# chaqiramiz (ular ALLAQACHON mavjud va sinovdan o'tgan).
+#
+# MUHIM: video ATAYLAB shu ro'yxatga kiritilmagan — video
+# generatsiyasi bir necha daqiqa davom etadi va alohida
+# job_id/polling infratuzilmasini talab qiladi (Mini App'da
+# allaqachon shunday ishlaydi). Uni oddiy matn-javob oqimiga
+# qo'shish "Failed to fetch" kabi muammolarni qaytarishi
+# mumkin edi. Video uchun foydalanuvchi hamon "Video" rejimini
+# tanlaydi.
+
+AGENT_TOOLS = [
+    {
+        "name": "generate_image",
+        "description": (
+            "Generate an image from a text description. Use this "
+            "tool ONLY when the user clearly and explicitly asks "
+            "you to draw, create, or generate a picture, image, "
+            "photo, or illustration — not when they merely mention "
+            "an image in passing or ask a question about images in "
+            "general."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": (
+                        "A vivid, detailed English description of "
+                        "the image to generate."
+                    ),
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["1:1", "9:16", "16:9", "3:4", "4:3"],
+                    "description": (
+                        "Image aspect ratio. Use \"1:1\" if unclear."
+                    ),
+                },
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "generate_music",
+        "description": (
+            "Generate a short piece of music or song from a "
+            "description. Use this tool ONLY when the user clearly "
+            "and explicitly asks you to create, generate, or write "
+            "a song or a piece of music."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": (
+                        "Description of the music: genre, mood, "
+                        "topic."
+                    ),
+                },
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "generate_voice",
+        "description": (
+            "Convert text to spoken audio. Use this tool ONLY when "
+            "the user clearly and explicitly asks you to say "
+            "something out loud, read text aloud, or convert text "
+            "to speech/voice."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": (
+                        "The exact text to convert to speech, in "
+                        "the same language the user used."
+                    ),
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": ["female", "male"],
+                    "description": (
+                        "Voice gender. Use \"female\" if unclear."
+                    ),
+                },
+            },
+            "required": ["text"],
+        },
+    },
+]
+
+
+async def classify_and_maybe_generate(
+    chat_id: int,
+    user_text: str,
+    lang: str,
+    history: list[dict],
+) -> dict:
+    """
+    Claude'ga tool'lar bilan birga xabar yuboradi. Agar Claude
+    rasm/musiqa/ovoz generatsiyasini tanlasa, mos funksiyani
+    chaqirib natijani qaytaradi; aks holda oddiy matn javobini
+    qaytaradi. Bitta joyda (bot.py) yozilgan — Telegram ham,
+    Mini App ham shu funksiyani chaqiradi, ikkalasida ham bir
+    xil xulq-atvor bo'lishi uchun.
+
+    Qaytadigan lug'at shakllari:
+        {"type": "text", "text": str, "cost": int}
+        {"type": "image", "url": str, "cost": int, "prompt": str}
+        {"type": "music", "url": str, "cost": int, "prompt": str}
+        {"type": "voice", "audio_bytes": bytes, "cost": int, "text": str}
+        {"type": "insufficient_coins", "cost": int}
+        {"type": "error"}
+    """
+
+    lang_name = LANG_NAMES.get(lang, "o'zbek")
+
+    dynamic_system_prompt = (
+        SYSTEM_PROMPT
+        + f" Javobingizni {lang_name} tilida yozing."
+        + " If the user's message clearly and explicitly asks you "
+        "to create an image, a piece of music, or spoken voice/"
+        "audio, call the matching tool instead of replying with "
+        "plain text. For anything else — including questions, "
+        "requests for video, or ambiguous messages — just reply "
+        "normally with text."
+    )
+
+    try:
+
+        response = await asyncio.to_thread(
+            claude_client.messages.create,
+            model=MODEL_NAME,
+            max_tokens=1024,
+            system=dynamic_system_prompt,
+            messages=history,
+            tools=AGENT_TOOLS,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Agent (classify_and_maybe_generate) "
+            "Claude chaqiruvi xatosi:"
+        )
+
+        return {"type": "error"}
+
+    tool_use_block = next(
+        (
+            block
+            for block in response.content
+            if block.type == "tool_use"
+        ),
+        None,
+    )
+
+    if tool_use_block is None:
+
+        reply_text = "".join(
+            block.text
+            for block in response.content
+            if block.type == "text"
+        )
+
+        return {
+            "type": "text",
+            "text": reply_text,
+            "cost": COIN_COST_TEXT,
+        }
+
+    tool_name = tool_use_block.name
+    tool_input = tool_use_block.input or {}
+
+    if tool_name == "generate_image":
+
+        cost = COIN_COST_IMAGE
+
+        if get_balance(chat_id) < cost:
+            return {
+                "type": "insufficient_coins",
+                "cost": cost,
+            }
+
+        prompt = tool_input.get(
+            "prompt", user_text
+        )
+
+        aspect_ratio = tool_input.get(
+            "aspect_ratio", "1:1"
+        )
+
+        image_url = await generate_fal_image(
+            prompt,
+            aspect_ratio=aspect_ratio,
+        )
+
+        if not image_url:
+            return {"type": "error"}
+
+        return {
+            "type": "image",
+            "url": image_url,
+            "cost": cost,
+            "prompt": prompt,
+        }
+
+    if tool_name == "generate_music":
+
+        cost = COIN_COST_MUSIC
+
+        if get_balance(chat_id) < cost:
+            return {
+                "type": "insufficient_coins",
+                "cost": cost,
+            }
+
+        prompt = tool_input.get(
+            "prompt", user_text
+        )
+
+        audio_url = await generate_fal_music(
+            prompt
+        )
+
+        if not audio_url:
+            return {"type": "error"}
+
+        return {
+            "type": "music",
+            "url": audio_url,
+            "cost": cost,
+            "prompt": prompt,
+        }
+
+    if tool_name == "generate_voice":
+
+        cost = COIN_COST_VOICE
+
+        if get_balance(chat_id) < cost:
+            return {
+                "type": "insufficient_coins",
+                "cost": cost,
+            }
+
+        text_to_speak = tool_input.get(
+            "text", user_text
+        )
+
+        gender = tool_input.get(
+            "gender", "female"
+        )
+
+        selected_voice = get_tts_voice(
+            lang, gender
+        )
+
+        audio_path = (
+            f"/tmp/agent_voice_{chat_id}_"
+            f"{int(time.time())}.mp3"
+        )
+
+        try:
+
+            communicate = edge_tts.Communicate(
+                text_to_speak,
+                selected_voice,
+            )
+
+            await communicate.save(
+                audio_path
+            )
+
+            if (
+                not os.path.exists(audio_path)
+                or os.path.getsize(audio_path) == 0
+            ):
+                raise ValueError(
+                    "edge-tts bo'sh audio "
+                    "fayl qaytardi"
+                )
+
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+
+        except Exception:
+
+            logger.exception(
+                "Agent ovoz generatsiyasi xatosi:"
+            )
+
+            return {"type": "error"}
+
+        finally:
+
+            if os.path.exists(audio_path):
+                try:
+                    os.remove(audio_path)
+                except Exception:
+                    pass
+
+        return {
+            "type": "voice",
+            "audio_bytes": audio_bytes,
+            "cost": cost,
+            "text": text_to_speak,
+        }
+
+    # Noma'lum tool nomi — amalda bo'lmasligi kerak, lekin
+    # xavfsizlik uchun oddiy matn javobiga tushamiz.
+    return {
+        "type": "text",
+        "text": t(lang, "text_error"),
+        "cost": 0,
+    }
 
 
 # ============================================================
@@ -1264,8 +1611,12 @@ async def generate_fal_video(
 
         target_model_id = model_info["image_model_id"]
 
-        base64_data = base64.b64encode(
+        resized_image_bytes = resize_image_for_fal(
             image_bytes
+        )
+
+        base64_data = base64.b64encode(
+            resized_image_bytes
         ).decode("ascii")
 
         arguments = {
@@ -1381,6 +1732,84 @@ async def generate_fal_music(
     return None
 
 
+# ============================================================
+# RASMLARNI FAL.AI UCHUN KICHRAYTIRISH
+# ============================================================
+#
+# MUHIM (YANGI): Mini App orqali yuklangan rasmlar (masalan
+# telefon kamerasining to'liq o'lchamdagi surati) bir necha MB
+# bo'lishi mumkin. base64'ga o'girilganda hajm ~33% oshadi, va
+# fal.ai bunday katta "data:" URL'larni 10 MB dan oshsa rad
+# etadi ("file_too_large" xatosi). Shu sabab har qanday rasm
+# fal.ai'ga base64 sifatida yuborilishidan OLDIN shu funksiya
+# orqali kichraytiriladi — natija sifatiga deyarli ta'sir
+# qilmaydi (video/rasm modellari baribir bunchalik katta
+# kirish o'lchamini talab qilmaydi).
+
+def resize_image_for_fal(
+    image_bytes: bytes,
+    max_dimension: int = 1280,
+    quality: int = 85,
+) -> bytes:
+
+    try:
+
+        image = Image.open(
+            io.BytesIO(image_bytes)
+        )
+
+        # RGBA/P kabi rejimlarni RGB'ga o'giramiz — aks holda
+        # JPEG sifatida saqlashda xato chiqadi.
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+
+        width, height = image.size
+
+        if max(width, height) > max_dimension:
+
+            if width >= height:
+                new_width = max_dimension
+                new_height = int(
+                    height * (max_dimension / width)
+                )
+            else:
+                new_height = max_dimension
+                new_width = int(
+                    width * (max_dimension / height)
+                )
+
+            image = image.resize(
+                (new_width, new_height),
+                Image.LANCZOS,
+            )
+
+        output = io.BytesIO()
+
+        image.save(
+            output,
+            format="JPEG",
+            quality=quality,
+            optimize=True,
+        )
+
+        return output.getvalue()
+
+    except Exception as e:
+
+        # MUHIM: kichraytirish xato bersa ham (masalan buzuq
+        # fayl), asl bayt oqimini qaytaramiz — funksiya
+        # chaqiruvchi joyni butunlay to'xtatib qo'ymaydi. fal.ai
+        # baribir o'z xatoligini qaytaradi, lekin bu kutilmagan
+        # server xatosidan ko'ra ancha yaxshiroq holat.
+
+        logger.warning(
+            "Rasmni kichraytirib bo'lmadi, asl "
+            f"fayl ishlatiladi: {e}"
+        )
+
+        return image_bytes
+
+
 async def download_telegram_image(
     image_url: str,
 ) -> bytes:
@@ -1409,8 +1838,12 @@ async def apply_fal_ai_style(
 
     def run_generation():
 
-        base64_data = base64.b64encode(
+        resized_image_bytes = resize_image_for_fal(
             image_bytes
+        )
+
+        base64_data = base64.b64encode(
+            resized_image_bytes
         ).decode("ascii")
 
         image_url = (
@@ -1452,6 +1885,30 @@ async def apply_fal_ai_style(
 
     return await asyncio.to_thread(
         run_generation
+    )
+
+
+async def edit_image_with_instruction(
+    image_bytes: bytes,
+    instruction: str,
+) -> str | None:
+    """
+    MUHIM (YANGI): "Tayyor stillar"dagi tayyor shablonlardan farqli
+    o'laroq, foydalanuvchi o'z so'zlari bilan yozgan erkin
+    buyruqqa ("bu rasmni tunga aylantir", "sochini qizil qil" va
+    h.k.) qarab rasmni tahrirlaydi. Backend AYNAN bir xil —
+    apply_fal_ai_style (fal-ai/gemini-25-flash-image/edit) — faqat
+    tayyor "style_prompt" o'rniga foydalanuvchi buyrug'i (avval
+    ingliz tiliga tarjima qilingan holda) beriladi.
+    """
+
+    english_instruction = await translate_prompt_to_english(
+        instruction
+    )
+
+    return await apply_fal_ai_style(
+        image_bytes,
+        english_instruction,
     )
 
 
@@ -3488,95 +3945,164 @@ async def handle_message(
         action="typing",
     )
 
-    lang_names = {
-        "uz": "o'zbek",
-        "ru": "русском",
-        "kk": "қазақ",
-        "tg": "тоҷикӣ",
-        "ky": "кыргыз",
-        "en": "English",
-    }
-
-    lang_name_for_prompt = lang_names.get(
+    result = await classify_and_maybe_generate(
+        chat_id,
+        user_text,
         lang,
-        "o'zbek",
+        history,
     )
 
-    dynamic_system_prompt = (
-        SYSTEM_PROMPT
-        + f" Javobingizni "
-        f"{lang_name_for_prompt} "
-        f"tilida yozing."
-    )
+    if result["type"] == "error":
 
-    try:
-
-        response = (
-            claude_client.messages.create(
-                model=MODEL_NAME,
-                max_tokens=1024,
-                system=dynamic_system_prompt,
-                messages=history,
-            )
-        )
-
-        reply_text = "".join(
-            block.text
-            for block in response.content
-            if block.type == "text"
-        )
-
-    except Exception:
-
-        logger.exception(
-            "Anthropic API xatosi:"
+        logger.error(
+            "Telegram agent xatosi "
+            "(classify_and_maybe_generate "
+            "'error' qaytardi)"
         )
 
         await notify_admin_error(
             context,
-            "Claude chat",
+            "Claude chat (agent)",
         )
 
-        reply_text = t(
-            lang,
-            "text_error",
-        )
-
-        conversation_history[
-            chat_id
-        ] = history
+        conversation_history[chat_id] = history
 
         await update.message.reply_text(
-            reply_text,
+            t(lang, "text_error"),
+            reply_markup=main_menu_keyboard(lang),
+        )
+
+        return
+
+    if result["type"] == "insufficient_coins":
+
+        conversation_history[chat_id] = history
+
+        await update.message.reply_text(
+            t(
+                lang,
+                "insufficient_coins",
+                cost=result["cost"],
+                balance=get_balance(chat_id),
+            ),
+            reply_markup=main_menu_keyboard(lang),
+        )
+
+        return
+
+    if result["type"] == "text":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": result["text"],
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        await update.message.reply_text(
+            result["text"],
             reply_markup=main_menu_keyboard(
-                lang
+                get_lang(chat_id)
             ),
         )
 
         return
 
-    history.append(
-        {
-            "role": "assistant",
-            "content": reply_text,
-        }
-    )
+    if result["type"] == "image":
 
-    conversation_history[
-        chat_id
-    ] = history
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated an image: {result['prompt']}]"
+                ),
+            }
+        )
 
-    change_balance(
-        chat_id,
-        -COIN_COST_TEXT,
-    )
+        conversation_history[chat_id] = history
 
-    await update.message.reply_text(
-        reply_text,
-        reply_markup=main_menu_keyboard(
-            get_lang(chat_id)
-        ),
-    )
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        await update.message.reply_photo(
+            photo=result["url"],
+            caption=(
+                f"🖼 {result['prompt']}\n\n"
+                f"🪙 -{result['cost']} coin "
+                f"({new_balance})"
+            ),
+            reply_markup=main_menu_keyboard(lang),
+        )
+
+        return
+
+    if result["type"] == "music":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated music: {result['prompt']}]"
+                ),
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        await update.message.reply_audio(
+            audio=result["url"],
+            caption=(
+                f"🎵 {result['prompt']}\n\n"
+                f"🪙 -{result['cost']} coin "
+                f"({new_balance})"
+            ),
+            reply_markup=main_menu_keyboard(lang),
+        )
+
+        return
+
+    if result["type"] == "voice":
+
+        history.append(
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Generated voice for: {result['text']}]"
+                ),
+            }
+        )
+
+        conversation_history[chat_id] = history
+
+        new_balance = change_balance(
+            chat_id,
+            -result["cost"],
+        )
+
+        await update.message.reply_voice(
+            voice=io.BytesIO(result["audio_bytes"]),
+            caption=(
+                f"🔊 -{result['cost']} coin "
+                f"({new_balance})"
+            ),
+            reply_markup=main_menu_keyboard(lang),
+        )
+
+        return
 
 
 # ============================================================
