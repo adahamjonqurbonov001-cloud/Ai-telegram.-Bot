@@ -70,6 +70,7 @@ from bot import (
     conversation_history,
     analyze_video_with_claude,
     edit_image_with_instruction,
+    analyze_or_edit_photo,
     extract_video_frames,
     generate_fal_image,
     generate_fal_music,
@@ -488,12 +489,14 @@ async def api_chat(
     "music" / "voice".
 
     MUHIM (YANA YANGI): agar so'rovga "photo" biriktirilgan
-    bo'lsa, Claude'ning tool-tanlash bosqichi UMUMAN
-    o'tkazib yuboriladi — bu holatda niyat aniq (mavjud
-    rasmni "message" matnidagi ko'rsatmaga ko'ra tahrirlash),
-    shuning uchun to'g'ridan-to'g'ri edit_image_with_instruction
-    chaqiriladi (xuddi "Tayyor stillar"dagi bilan bir xil
-    fal.ai modeli, faqat tayyor shablon o'rniga erkin buyruq).
+    bo'lsa, Claude'ning matn-tool tanlash bosqichi (rasm/musiqa/
+    ovoz) o'tkazib yuboriladi — o'rniga rasm Claude'ning ko'rish
+    (vision) qobiliyati orqali tahlil qilinadi: agar foydalanuvchi
+    savol bersa ("bu rasmda nima bor?"), Claude matn bilan javob
+    beradi; agar aniq tahrirlash so'ralsa ("buni tunga aylantir"),
+    Claude edit_image tool'ini chaqiradi va fal.ai orqali rasm
+    tahrirlanadi (analyze_or_edit_photo — bot.py'da, Telegram
+    bilan bir xil funksiya).
     """
 
     user = verify_telegram_init_data(
@@ -505,7 +508,7 @@ async def api_chat(
     lang = get_lang(chat_id)
 
     # --------------------------------------------------------
-    # RASM BIRIKTIRILGAN BO'LSA — TAHRIRLASH YO'LI
+    # RASM BIRIKTIRILGAN BO'LSA — TAHLIL YOKI TAHRIRLASH YO'LI
     # --------------------------------------------------------
     if photo is not None:
 
@@ -522,26 +525,24 @@ async def api_chat(
 
         photo_bytes = await photo.read()
 
-        edit_instruction = message.strip() or (
-            "Enhance and improve this photo's overall quality "
-            "while keeping everything else unchanged."
-        )
+        user_caption = message.strip()
 
         try:
 
-            result_url = await edit_image_with_instruction(
+            result = await analyze_or_edit_photo(
                 photo_bytes,
-                edit_instruction,
+                user_caption,
+                lang,
             )
 
         except Exception:
 
             logger.exception(
-                "Mini App rasm tahrirlash xatosi:"
+                "Mini App rasm tahlil/tahrirlash xatosi:"
             )
 
             await notify_admin_error_miniapp(
-                "Mini App chat — rasm tahrirlash"
+                "Mini App chat — rasm tahlil/tahrirlash"
             )
 
             raise HTTPException(
@@ -549,27 +550,67 @@ async def api_chat(
                 detail=t(lang, "image_edit_error"),
             )
 
-        if not result_url:
+        if result["type"] == "error":
+
+            await notify_admin_error_miniapp(
+                "Mini App chat — rasm tahlil/tahrirlash"
+            )
+
             raise HTTPException(
                 status_code=500,
-                detail=t(lang, "no_result"),
+                detail=t(lang, "image_edit_error"),
             )
 
         history = conversation_history.get(
             chat_id, []
         )
 
+        if result["type"] == "text":
+
+            history.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"[Sent a photo] {user_caption}"
+                    ),
+                }
+            )
+
+            history.append(
+                {
+                    "role": "assistant",
+                    "content": result["text"],
+                }
+            )
+
+            conversation_history[chat_id] = history
+
+            new_balance = change_balance(
+                chat_id,
+                -result["cost"],
+            )
+
+            return {
+                "kind": "text",
+                "reply": result["text"],
+                "balance": new_balance,
+            }
+
+        # result["type"] == "image"
+
         history.append(
             {
                 "role": "user",
-                "content": f"[Sent a photo] {edit_instruction}",
+                "content": f"[Sent a photo] {user_caption}",
             }
         )
 
         history.append(
             {
                 "role": "assistant",
-                "content": f"[Edited the photo: {edit_instruction}]",
+                "content": (
+                    f"[Edited the photo: {result['prompt']}]"
+                ),
             }
         )
 
@@ -577,12 +618,12 @@ async def api_chat(
 
         new_balance = change_balance(
             chat_id,
-            -COIN_COST_STYLE,
+            -result["cost"],
         )
 
         return {
             "kind": "image",
-            "image_url": result_url,
+            "image_url": result["url"],
             "balance": new_balance,
         }
 
