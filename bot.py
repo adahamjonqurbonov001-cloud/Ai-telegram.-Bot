@@ -1913,6 +1913,204 @@ async def edit_image_with_instruction(
 
 
 # ============================================================
+# RASM BO'YICHA SAVOL-JAVOB / TAHRIRLASH (Claude vision)
+# ============================================================
+#
+# MUHIM (YANGI): avval foydalanuvchi biror rasm yuborib, "bu
+# rasmda nima bor?", "buni tasvirla" kabi erkin savol bersa,
+# Claude'ga RASMNING O'ZI umuman yuborilmasdi — faqat matn
+# (agar bo'lsa) alohida Claude chat so'roviga ketardi, shuning
+# uchun Claude "men rasmlarni ko'ra olmayman" deb javob berardi
+# (bu haqiqatan ham to'g'ri edi, chunki rasm hech qachon API
+# so'roviga qo'shilmagan edi).
+#
+# Endi rasm baytlari to'g'ridan-to'g'ri Anthropic API'ning
+# "image" content block'iga (base64, media_type bilan)
+# qo'shiladi — bu Claude'ning rasmiy ko'rish (vision)
+# imkoniyati, faqat promptga "sen ko'ra olasan" deb yozish
+# bilan farqli o'laroq, RASM HAQIQATAN API so'roviga boradi.
+#
+# Shu bilan birga, Claude'ga "edit_image" tool'i ham beriladi —
+# agar foydalanuvchi savol emas, balki TAHRIRLASH so'rasa
+# ("buni qorong'i qil", "fonini o'zgartir"), Claude shu tool'ni
+# chaqiradi va biz mavjud edit_image_with_instruction (fal.ai)
+# funksiyasini ishga tushiramiz. Aks holda Claude rasmni ko'rib,
+# oddiy MATN javobi beradi.
+
+IMAGE_QA_TOOLS = [
+    {
+        "name": "edit_image",
+        "description": (
+            "Edit or transform the provided image. Use this tool "
+            "ONLY when the user clearly asks you to change, edit, "
+            "transform, or stylize the image itself — not when "
+            "they ask a question about the image or ask you to "
+            "describe/analyze it."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "instruction": {
+                    "type": "string",
+                    "description": (
+                        "A clear, detailed English instruction "
+                        "describing exactly how to edit the image."
+                    ),
+                },
+            },
+            "required": ["instruction"],
+        },
+    },
+]
+
+
+def _guess_image_media_type(image_bytes: bytes) -> str:
+    """
+    Rasm baytlarining boshlanishiga (magic bytes) qarab
+    media_type'ni aniqlaydi — Anthropic API buni JPEG/PNG/WebP
+    uchun to'g'ri ko'rsatishni talab qiladi.
+    """
+
+    if image_bytes[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+
+    if image_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+
+    # Zaxira: Telegram/Mini App'dan kelgan rasmlar deyarli har
+    # doim JPEG — noma'lum holatda shu bilan davom etamiz.
+    return "image/jpeg"
+
+
+async def analyze_or_edit_photo(
+    image_bytes: bytes,
+    user_text: str,
+    lang: str,
+) -> dict:
+    """
+    Rasmni Claude'ga (vision) yuboradi. Foydalanuvchi matni
+    tahrirlash so'rovi bo'lsa, edit_image tool'i chaqiriladi va
+    natija rasm sifatida qaytadi; aks holda Claude rasmni ko'rib,
+    oddiy matn javobini qaytaradi.
+
+    Qaytadi:
+        {"type": "text", "text": str, "cost": int}
+        {"type": "image", "url": str, "cost": int, "prompt": str}
+        {"type": "error"}
+    """
+
+    lang_name = LANG_NAMES.get(lang, "o'zbek")
+
+    media_type = _guess_image_media_type(image_bytes)
+
+    base64_data = base64.b64encode(
+        image_bytes
+    ).decode("ascii")
+
+    dynamic_system_prompt = (
+        SYSTEM_PROMPT
+        + f" Javobingizni {lang_name} tilida yozing."
+        + " The user has sent you a photo. Look at it carefully "
+        "and respond to their message about it. If they clearly "
+        "ask you to edit or transform the image, use the "
+        "edit_image tool. Otherwise, describe or answer their "
+        "question about the image directly in plain text."
+    )
+
+    if not user_text:
+        user_text = "Rasmda nima borligini tasvirlab bering."
+
+    try:
+
+        response = await asyncio.to_thread(
+            claude_client.messages.create,
+            model=MODEL_NAME,
+            max_tokens=1024,
+            system=dynamic_system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": base64_data,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": user_text,
+                        },
+                    ],
+                }
+            ],
+            tools=IMAGE_QA_TOOLS,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "analyze_or_edit_photo — Claude "
+            "vision chaqiruvi xatosi:"
+        )
+
+        return {"type": "error"}
+
+    tool_use_block = next(
+        (
+            block
+            for block in response.content
+            if block.type == "tool_use"
+        ),
+        None,
+    )
+
+    if tool_use_block is not None and tool_use_block.name == "edit_image":
+
+        instruction = (
+            tool_use_block.input or {}
+        ).get("instruction", user_text)
+
+        result_url = await apply_fal_ai_style(
+            image_bytes,
+            instruction,
+        )
+
+        if not result_url:
+            return {"type": "error"}
+
+        return {
+            "type": "image",
+            "url": result_url,
+            "cost": COIN_COST_STYLE,
+            "prompt": instruction,
+        }
+
+    reply_text = "".join(
+        block.text
+        for block in response.content
+        if block.type == "text"
+    ).strip()
+
+    if not reply_text:
+        return {"type": "error"}
+
+    return {
+        "type": "text",
+        "text": reply_text,
+        "cost": COIN_COST_TEXT,
+    }
+
+
+# ============================================================
 # VIDEO ANALYZER — video'dan prompt yaratish
 # ============================================================
 #
@@ -2747,6 +2945,128 @@ async def process_style_photo(
     )
 
     if not style_key:
+
+        # MUHIM (YANGI): foydalanuvchi stil tanlamasdan, shunchaki
+        # bir rasm yuborgan (masalan "bu rasmda nima bor?" degan
+        # sarlavha bilan yoki sarlavhasiz). Avval bunday holatda
+        # bot HECH NARSA qilmasdi. Endi rasm Claude'ga (vision)
+        # yuboriladi — Claude uni ko'rib, savolga javob beradi
+        # yoki (agar aniq tahrirlash so'ralgan bo'lsa) fal.ai
+        # orqali tahrirlaydi.
+
+        if get_balance(chat_id) < COIN_COST_STYLE:
+
+            await update.message.reply_text(
+                t(
+                    lang,
+                    "insufficient_coins",
+                    cost=COIN_COST_STYLE,
+                    balance=get_balance(chat_id),
+                ),
+                reply_markup=main_menu_keyboard(lang),
+            )
+
+            return
+
+        photo = update.message.photo[-1]
+
+        tg_file = await context.bot.get_file(
+            photo.file_id
+        )
+
+        if tg_file.file_path.startswith("http"):
+            image_url = tg_file.file_path
+        else:
+            image_url = (
+                "https://api.telegram.org/file/bot"
+                f"{TELEGRAM_BOT_TOKEN}/"
+                f"{tg_file.file_path}"
+            )
+
+        await context.bot.send_chat_action(
+            chat_id=chat_id,
+            action="typing",
+        )
+
+        try:
+
+            image_bytes = await download_telegram_image(
+                image_url
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Rasm tahlili — yuklab olishda xatolik:"
+            )
+
+            await notify_admin_error(
+                context,
+                "Rasm tahlili — yuklab olish",
+            )
+
+            await update.message.reply_text(
+                t(lang, "image_edit_error"),
+                reply_markup=main_menu_keyboard(lang),
+            )
+
+            return
+
+        caption_text = update.message.caption or ""
+
+        result = await analyze_or_edit_photo(
+            image_bytes,
+            caption_text,
+            lang,
+        )
+
+        if result["type"] == "error":
+
+            await notify_admin_error(
+                context,
+                "Rasm tahlili/tahrirlash",
+            )
+
+            await update.message.reply_text(
+                t(lang, "image_edit_error"),
+                reply_markup=main_menu_keyboard(lang),
+            )
+
+            return
+
+        if result["type"] == "text":
+
+            change_balance(
+                chat_id,
+                -result["cost"],
+            )
+
+            await update.message.reply_text(
+                result["text"],
+                reply_markup=main_menu_keyboard(lang),
+            )
+
+            return
+
+        if result["type"] == "image":
+
+            new_balance = change_balance(
+                chat_id,
+                -result["cost"],
+            )
+
+            await update.message.reply_photo(
+                photo=result["url"],
+                caption=(
+                    f"🖼 {result['prompt']}\n\n"
+                    f"🪙 -{result['cost']} coin "
+                    f"({new_balance})"
+                ),
+                reply_markup=main_menu_keyboard(lang),
+            )
+
+            return
+
         return
 
     if get_balance(chat_id) < COIN_COST_STYLE:
@@ -3877,392 +4197,3 @@ async def handle_message(
 
         await generate_voice_from_text(
             update,
-            context,
-            user_text,
-        )
-
-        return
-
-    if awaiting_music_prompt.get(
-        chat_id
-    ):
-
-        awaiting_music_prompt[
-            chat_id
-        ] = False
-
-        await generate_music_from_prompt(
-            update,
-            context,
-            user_text,
-        )
-
-        return
-
-    if get_balance(chat_id) < COIN_COST_TEXT:
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "insufficient_coins",
-                cost=COIN_COST_TEXT,
-                balance=get_balance(
-                    chat_id
-                ),
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-        return
-
-    if chat_id not in conversation_history:
-
-        conversation_history[
-            chat_id
-        ] = []
-
-    history = conversation_history[
-        chat_id
-    ]
-
-    history.append(
-        {
-            "role": "user",
-            "content": user_text,
-        }
-    )
-
-    if len(history) > MAX_HISTORY_MESSAGES:
-
-        history = history[
-            -MAX_HISTORY_MESSAGES:
-        ]
-
-    await context.bot.send_chat_action(
-        chat_id=chat_id,
-        action="typing",
-    )
-
-    result = await classify_and_maybe_generate(
-        chat_id,
-        user_text,
-        lang,
-        history,
-    )
-
-    if result["type"] == "error":
-
-        logger.error(
-            "Telegram agent xatosi "
-            "(classify_and_maybe_generate "
-            "'error' qaytardi)"
-        )
-
-        await notify_admin_error(
-            context,
-            "Claude chat (agent)",
-        )
-
-        conversation_history[chat_id] = history
-
-        await update.message.reply_text(
-            t(lang, "text_error"),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "insufficient_coins":
-
-        conversation_history[chat_id] = history
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "insufficient_coins",
-                cost=result["cost"],
-                balance=get_balance(chat_id),
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "text":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": result["text"],
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_text(
-            result["text"],
-            reply_markup=main_menu_keyboard(
-                get_lang(chat_id)
-            ),
-        )
-
-        return
-
-    if result["type"] == "image":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated an image: {result['prompt']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_photo(
-            photo=result["url"],
-            caption=(
-                f"🖼 {result['prompt']}\n\n"
-                f"🪙 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "music":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated music: {result['prompt']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_audio(
-            audio=result["url"],
-            caption=(
-                f"🎵 {result['prompt']}\n\n"
-                f"🪙 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "voice":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated voice for: {result['text']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_voice(
-            voice=io.BytesIO(result["audio_bytes"]),
-            caption=(
-                f"🔊 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-def build_application():
-
-    missing = []
-
-    if "BU_YERGA" in TELEGRAM_BOT_TOKEN:
-        missing.append(
-            "TELEGRAM_BOT_TOKEN"
-        )
-
-    if "BU_YERGA" in ANTHROPIC_API_KEY:
-        missing.append(
-            "ANTHROPIC_API_KEY"
-        )
-
-    if "BU_YERGA" in FAL_KEY:
-        missing.append(
-            "FAL_KEY"
-        )
-
-    if (
-        not HF_API_KEY_ID
-        or not HF_API_KEY_SECRET
-    ):
-        missing.append(
-            "HF_API_KEY_ID / "
-            "HF_API_KEY_SECRET"
-        )
-
-    if "BU_YERGA" in ADMIN_ID:
-        missing.append(
-            "ADMIN_ID"
-        )
-
-    if missing:
-
-        print(
-            "\n⚠️ DIQQAT: "
-            "Quyidagi kalitlar "
-            "sozlanmagan: "
-            f"{', '.join(missing)}\n"
-        )
-
-        print(
-            "Bot baribir ishga tushadi, "
-            "lekin sozlanmagan "
-            "funksiyalar ishlamaydi.\n"
-        )
-
-    app = (
-        ApplicationBuilder()
-        .token(TELEGRAM_BOT_TOKEN)
-        .build()
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "help",
-            help_command,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "clear",
-            new_chat,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "id",
-            show_id,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "balance",
-            show_balance,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "coin_qoshish",
-            add_coins_admin,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "statistika",
-            show_stats_admin,
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            style_selected_callback,
-            pattern=r"^style:",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            language_selected_callback,
-            pattern=r"^lang:",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            voice_gender_selected_callback,
-            pattern=r"^voice_gender:",
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.PHOTO,
-            process_style_photo,
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT
-            & ~filters.COMMAND,
-            handle_message,
-        )
-    )
-
-    return app
-
-
-def main():
-
-    app = build_application()
-
-    print(
-        f"🤖 {BOT_NAME} ishga tushdi "
-        "(faqat bot, Mini App "
-        "serversiz)..."
-    )
-
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
