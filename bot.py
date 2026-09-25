@@ -1,3 +1,4 @@
+# redeploy-trigger
 """
 MUBORAKXON — Sun'iy Intellekt Telegram Bot
 - Matnli suhbat: Claude (Anthropic) API orqali
