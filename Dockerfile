@@ -5,6 +5,11 @@
 # Nixpacks/Railpack o'rniga AVTOMATIK ustun qo'yib ishlatadi — shu
 # sababli qaysi "quruvchi" ishlatilishidan qat'iy nazar, ffmpeg
 # har doim o'rnatiladi.
+#
+# CACHE_BUST: 2026-09-26-v2 — bu qatorni har safar "bot.py topilmadi"
+# kabi eskirgan (keshlangan) build muammosi bo'lsa, qiymatini
+# o'zgartiring (masalan v3, v4...) — bu Railway/Docker'ni COPY
+# qatlamini QAYTADAN, noldan bajarishga majburlaydi.
 
 FROM python:3.11-slim
 
@@ -24,6 +29,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# CACHE_BUST shu yerda ham ishlatiladi — COPY buyrug'idan oldin
+# qo'yilgan har qanday o'zgargan qator undan keyingi barcha
+# qatlamlarni (jumladan COPY . .) keshdan chiqarib, qaytadan
+# bajarishga majburlaydi.
+ARG CACHE_BUST=2026-09-26-v2
 COPY . .
 
 ENV PORT=8000
