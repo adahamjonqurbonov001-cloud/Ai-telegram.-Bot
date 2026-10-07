@@ -39,6 +39,8 @@ import traceback
 import base64
 import re
 import time
+import tempfile
+import datetime
 
 import httpx
 import fal_client
@@ -298,6 +300,12 @@ if DATA_DIR != "." and not os.path.exists(DATA_DIR):
 COINS_FILE = os.path.join(DATA_DIR, "coins.json")
 BONUS_FILE = os.path.join(DATA_DIR, "daily_bonus.json")
 LANG_FILE = os.path.join(DATA_DIR, "user_languages.json")
+GALLERY_FILE = os.path.join(DATA_DIR, "gallery.json")
+
+# Har bir foydalanuvchi uchun galereyada saqlanadigan eng ko'p
+# natijalar soni — cheksiz o'sib, fayl haddan tashqari
+# kattalashib ketmasligi uchun.
+GALLERY_MAX_ENTRIES_PER_USER = 200
 
 
 # ============================================================
@@ -988,6 +996,230 @@ def is_admin(
     user_id: int,
 ) -> bool:
     return str(user_id) == str(ADMIN_ID)
+
+
+# ============================================================
+# GALEREYA (natijalar tarixi)
+# ============================================================
+#
+# MUHIM: mavjud coins.json bilan bir xil patternni (DATA_DIR +
+# JSON fayl) davom ettiradi — yangi infratuzilma (masalan
+# Postgres) qo'shilmagan. Yagona farq: bu yerda bir nechta
+# so'rov bir vaqtda yozishga urinishi mumkinligi uchun (masalan
+# ikkita generatsiya deyarli bir vaqtda tugasa) ATOMIK yozish
+# (vaqtinchalik faylga yozib, so'ng os.replace() bilan
+# almashtirish) va asyncio.Lock ishlatiladi — bu gallery.json
+# hech qachon yarim yozilgan holatda "buzilib" qolmasligini
+# kafolatlaydi.
+#
+# gallery.json faqat METADATA va URL saqlaydi (rasm/video/audio
+# faylining o'zi hech qachon bu yerga yozilmaydi) — struktura:
+#   {"<user_id>": [{"user_id", "type", "url", "created_at",
+#                    "prompt", "model"}, ...]}
+
+gallery_lock = asyncio.Lock()
+
+# Galereyaga qo'shiladigan LOKAL media fayllar (masalan
+# Telegram'da yaratilgan ovoz) uchun umumiy papka va saqlash
+# muddati. server.py ham xuddi shu papkani (/api/media) xizmat
+# qiladi — ikkalasi bir xil konteynerda ishlagani uchun
+# bot.py shu yerga yozsa, server.py uni o'qiy oladi.
+GALLERY_MEDIA_DIR = "/tmp/muborakxon_media"
+GALLERY_MEDIA_RETENTION_SECONDS = 7 * 24 * 60 * 60  # 7 kun
+
+
+def load_gallery() -> dict:
+    if os.path.exists(GALLERY_FILE):
+        try:
+            with open(
+                GALLERY_FILE,
+                "r",
+                encoding="utf-8",
+            ) as f:
+                return json.load(f)
+        except Exception:
+            # Fayl buzilgan/bo'sh bo'lsa, bo'sh lug'at bilan
+            # davom etamiz — butun botni to'xtatib qo'ymaymiz.
+            return {}
+
+    return {}
+
+
+def _save_gallery_atomic(data: dict):
+    """
+    Atomik yozish: avval shu papkadagi vaqtinchalik faylga
+    yozadi, so'ng os.replace() (bitta atomik amal) bilan asosiy
+    faylga almashtiradi. Jarayon o'rtada uzilib qolsa ham
+    (masalan server qayta ishga tushsa), gallery.json HECH
+    QACHON yarim yozilgan/buzilgan holatda qolmaydi — yo eski
+    to'liq nusxa, yo yangi to'liq nusxa bo'ladi.
+    """
+
+    directory = os.path.dirname(GALLERY_FILE) or "."
+
+    if directory != "." and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+
+    fd, tmp_path = tempfile.mkstemp(
+        dir=directory,
+        prefix=".gallery_",
+        suffix=".tmp",
+    )
+
+    try:
+
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(
+                data,
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        os.replace(tmp_path, GALLERY_FILE)
+
+    except Exception:
+
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
+        raise
+
+
+async def add_gallery_entry(
+    user_id: int,
+    entry_type: str,
+    url: str,
+    prompt: str = "",
+    model: str = "",
+) -> None:
+    """
+    Yangi natijani (rasm/video/musiqa/ovoz) foydalanuvchining
+    galereyasiga qo'shadi. asyncio.Lock orqali himoyalangan —
+    bir nechta so'rov bir vaqtda kelsa ham, yozishlar navbat
+    bilan, xavfsiz bajariladi.
+    """
+
+    if not url:
+        return
+
+    async with gallery_lock:
+
+        data = await asyncio.to_thread(
+            load_gallery
+        )
+
+        uid = str(user_id)
+
+        entries = data.get(uid, [])
+
+        entries.append(
+            {
+                "user_id": uid,
+                "type": entry_type,
+                "url": url,
+                "created_at": (
+                    datetime.datetime.utcnow().isoformat()
+                    + "Z"
+                ),
+                "prompt": prompt or "",
+                "model": model or "",
+            }
+        )
+
+        # Eng ko'p GALLERY_MAX_ENTRIES_PER_USER ta saqlanadi —
+        # undan ortig'i bo'lsa, eng eskilari (ro'yxat boshidan)
+        # olib tashlanadi.
+        if len(entries) > GALLERY_MAX_ENTRIES_PER_USER:
+            entries = entries[
+                -GALLERY_MAX_ENTRIES_PER_USER:
+            ]
+
+        data[uid] = entries
+
+        try:
+
+            await asyncio.to_thread(
+                _save_gallery_atomic, data
+            )
+
+        except Exception:
+
+            # MUHIM: galereyaga yozish xato bersa ham, bu asosiy
+            # generatsiya jarayonini (foydalanuvchiga natijani
+            # yetkazishni) TO'XTATMASLIGI kerak — shuning uchun
+            # bu funksiyani chaqiruvchi joylarda try/except bilan
+            # o'ralmaydi, faqat shu yerda log qilinadi.
+            logger.warning(
+                "Galereyaga yozib bo'lmadi "
+                f"(user={user_id}, type={entry_type})",
+                exc_info=True,
+            )
+
+
+async def _delete_gallery_media_later(
+    path: str,
+    delay_seconds: int,
+):
+    await asyncio.sleep(delay_seconds)
+
+    try:
+        os.remove(path)
+    except Exception:
+        pass
+
+
+async def save_bytes_for_gallery(
+    data: bytes,
+    filename: str,
+) -> str:
+    """
+    Baytlarni GALLERY_MEDIA_DIR ichiga yozadi, GALLERY_MEDIA_
+    RETENTION_SECONDS'dan keyin avtomatik o'chirishni
+    rejalashtiradi va server.py'ning /api/media yo'li orqali
+    ochiladigan nisbiy URL'ni qaytaradi.
+    """
+
+    os.makedirs(GALLERY_MEDIA_DIR, exist_ok=True)
+
+    path = os.path.join(GALLERY_MEDIA_DIR, filename)
+
+    with open(path, "wb") as f:
+        f.write(data)
+
+    asyncio.create_task(
+        _delete_gallery_media_later(
+            path,
+            GALLERY_MEDIA_RETENTION_SECONDS,
+        )
+    )
+
+    return f"/api/media/{filename}"
+
+
+def get_gallery_entries(
+    user_id: int,
+    entry_type: str | None = None,
+) -> list[dict]:
+    """
+    Foydalanuvchining galereya yozuvlarini ENG YANGISI birinchi
+    bo'lib turadigan tartibda qaytaradi. entry_type berilsa
+    ("image"/"video"/"music"/"voice"), faqat o'sha turdagilar.
+    """
+
+    data = load_gallery()
+
+    entries = data.get(str(user_id), [])
+
+    if entry_type and entry_type != "all":
+        entries = [
+            e for e in entries
+            if e.get("type") == entry_type
+        ]
+
+    return list(reversed(entries))
 
 
 def escape_markdown_v1(text: str) -> str:
@@ -3055,6 +3287,14 @@ async def process_style_photo(
                 -result["cost"],
             )
 
+            await add_gallery_entry(
+                chat_id,
+                "image",
+                result["url"],
+                prompt=result["prompt"],
+                model="photo_edit",
+            )
+
             await update.message.reply_photo(
                 photo=result["url"],
                 caption=(
@@ -3143,6 +3383,14 @@ async def process_style_photo(
         new_balance = change_balance(
             chat_id,
             -COIN_COST_STYLE,
+        )
+
+        await add_gallery_entry(
+            chat_id,
+            "image",
+            result_url,
+            prompt=style_label(style_key, lang),
+            model=f"style:{style_key}",
         )
 
         await update.message.reply_photo(
@@ -3508,6 +3756,34 @@ async def generate_voice_from_text(
             -COIN_COST_VOICE,
         )
 
+        # Galereya uchun nusxa saqlaymiz (xato bo'lsa ham
+        # foydalanuvchiga ovoz baribir yuboriladi).
+        try:
+
+            with open(audio_path, "rb") as f_gallery:
+                gallery_bytes = f_gallery.read()
+
+            gallery_url = await save_bytes_for_gallery(
+                gallery_bytes,
+                f"voice_{chat_id}_{int(time.time())}.mp3",
+            )
+
+            await add_gallery_entry(
+                chat_id,
+                "voice",
+                gallery_url,
+                prompt=text[:200],
+                model=gender,
+            )
+
+        except Exception:
+
+            logger.warning(
+                "Telegram ovozini galereyaga "
+                "saqlab bo'lmadi:",
+                exc_info=True,
+            )
+
         with open(
             audio_path,
             "rb",
@@ -3692,6 +3968,13 @@ async def generate_music_from_prompt(
             -COIN_COST_MUSIC,
         )
 
+        await add_gallery_entry(
+            chat_id,
+            "music",
+            audio_url,
+            prompt=prompt,
+        )
+
         await update.message.reply_audio(
             audio=audio_url,
             caption=(
@@ -3771,818 +4054,4 @@ async def generate_video_from_prompt(
     await update.message.reply_text(
         t(
             lang,
-            "video_generating",
-            label=model_info[
-                "label"
-            ],
-        ),
-        reply_markup=main_menu_keyboard(
-            lang
-        ),
-    )
-
-    try:
-
-        video_url = await generate_fal_video(
-            prompt,
-            model_key,
-        )
-
-        if not video_url:
-
-            raise ValueError(
-                "Video URL topilmadi."
-            )
-
-        new_balance = change_balance(
-            chat_id,
-            -COIN_COST_VIDEO,
-        )
-
-        await context.bot.send_chat_action(
-            chat_id=chat_id,
-            action="upload_video",
-        )
-
-        await update.message.reply_video(
-            video=video_url,
-            caption=(
-                f"🎬 {prompt}\n\n"
-                f"🪙 -{COIN_COST_VIDEO} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-    except Exception:
-
-        logger.exception(
-            "fal.ai video yaratish xatosi:"
-        )
-
-        await notify_admin_error(
-            context,
-            "Video yaratish",
-        )
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "video_error",
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-
-# ============================================================
-# HIGGSFIELD RASM YARATISH
-# ============================================================
-
-async def generate_image_from_prompt(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    prompt: str,
-):
-
-    chat_id = update.effective_chat.id
-
-    lang = get_lang(chat_id)
-
-    if get_balance(chat_id) < COIN_COST_IMAGE:
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "insufficient_coins",
-                cost=COIN_COST_IMAGE,
-                balance=get_balance(
-                    chat_id
-                ),
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-        return
-
-    if not FAL_KEY or "BU_YERGA" in FAL_KEY:
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "hf_not_configured",
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-        return
-
-    await context.bot.send_chat_action(
-        chat_id=chat_id,
-        action="upload_photo",
-    )
-
-    await update.message.reply_text(
-        t(
-            lang,
-            "image_generating",
-        )
-    )
-
-    try:
-
-        image_url = (
-            await generate_fal_image(
-                prompt
-            )
-        )
-
-        if not image_url:
-
-            raise ValueError(
-                "Higgsfield rasm URL "
-                "qaytarmadi"
-            )
-
-        new_balance = change_balance(
-            chat_id,
-            -COIN_COST_IMAGE,
-        )
-
-        await update.message.reply_photo(
-            photo=image_url,
-            caption=(
-                f"🖼 {prompt}\n\n"
-                f"🪙 -{COIN_COST_IMAGE} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-    except Exception:
-
-        logger.exception(
-            "Higgsfield rasm yaratish xatosi:"
-        )
-
-        await notify_admin_error(
-            context,
-            "Rasm yaratish",
-        )
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "image_error",
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-
-# ============================================================
-# ASOSIY MESSAGE HANDLER
-# ============================================================
-
-async def handle_message(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-
-    chat_id = update.effective_chat.id
-
-    user_text = update.message.text
-
-    lang = get_lang(chat_id)
-
-    if user_text == t(
-        lang,
-        "btn_new_chat",
-    ):
-
-        await new_chat(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_styles",
-    ):
-
-        await show_styles_menu(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_image",
-    ):
-
-        await ask_image_prompt(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_video",
-    ):
-
-        await ask_video_model(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_voice",
-    ):
-
-        await ask_voice_text(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_music",
-    ):
-
-        await ask_music_prompt(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_balance",
-    ):
-
-        await show_balance(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_bonus",
-    ):
-
-        await claim_daily_bonus(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_buy_coins",
-    ):
-
-        await show_buy_coins(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_settings",
-    ):
-
-        await settings_command(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_help",
-    ):
-
-        await help_command(
-            update,
-            context,
-        )
-
-        return
-
-    if user_text == t(
-        lang,
-        "btn_language",
-    ):
-
-        await update.message.reply_text(
-            t(
-                DEFAULT_LANGUAGE,
-                "choose_language",
-            ),
-            reply_markup=language_inline_keyboard(),
-        )
-
-        return
-
-    if awaiting_video_model_choice.get(
-        chat_id
-    ):
-
-        if user_text == t(
-            lang,
-            "video_model_wan",
-        ):
-
-            await ask_video_prompt(
-                update,
-                context,
-                "wan",
-            )
-
-            return
-
-        elif user_text == t(
-            lang,
-            "video_model_kling",
-        ):
-
-            await ask_video_prompt(
-                update,
-                context,
-                "kling",
-            )
-
-            return
-
-        else:
-
-            await update.message.reply_text(
-                t(
-                    lang,
-                    "choose_button_below",
-                ),
-                reply_markup=video_model_keyboard(
-                    lang
-                ),
-            )
-
-            return
-
-    if chat_id in awaiting_video_prompt:
-
-        model_key = awaiting_video_prompt.pop(
-            chat_id
-        )
-
-        await generate_video_from_prompt(
-            update,
-            context,
-            user_text,
-            model_key,
-        )
-
-        return
-
-    if awaiting_image_prompt.get(
-        chat_id
-    ):
-
-        awaiting_image_prompt[
-            chat_id
-        ] = False
-
-        await generate_image_from_prompt(
-            update,
-            context,
-            user_text,
-        )
-
-        return
-
-    if awaiting_voice_text.get(
-        chat_id
-    ):
-
-        awaiting_voice_text[
-            chat_id
-        ] = False
-
-        await generate_voice_from_text(
-            update,
-            context,
-            user_text,
-        )
-
-        return
-
-    if awaiting_music_prompt.get(
-        chat_id
-    ):
-
-        awaiting_music_prompt[
-            chat_id
-        ] = False
-
-        await generate_music_from_prompt(
-            update,
-            context,
-            user_text,
-        )
-
-        return
-
-    if get_balance(chat_id) < COIN_COST_TEXT:
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "insufficient_coins",
-                cost=COIN_COST_TEXT,
-                balance=get_balance(
-                    chat_id
-                ),
-            ),
-            reply_markup=main_menu_keyboard(
-                lang
-            ),
-        )
-
-        return
-
-    if chat_id not in conversation_history:
-
-        conversation_history[
-            chat_id
-        ] = []
-
-    history = conversation_history[
-        chat_id
-    ]
-
-    history.append(
-        {
-            "role": "user",
-            "content": user_text,
-        }
-    )
-
-    if len(history) > MAX_HISTORY_MESSAGES:
-
-        history = history[
-            -MAX_HISTORY_MESSAGES:
-        ]
-
-    await context.bot.send_chat_action(
-        chat_id=chat_id,
-        action="typing",
-    )
-
-    result = await classify_and_maybe_generate(
-        chat_id,
-        user_text,
-        lang,
-        history,
-    )
-
-    if result["type"] == "error":
-
-        logger.error(
-            "Telegram agent xatosi "
-            "(classify_and_maybe_generate "
-            "'error' qaytardi)"
-        )
-
-        await notify_admin_error(
-            context,
-            "Claude chat (agent)",
-        )
-
-        conversation_history[chat_id] = history
-
-        await update.message.reply_text(
-            t(lang, "text_error"),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "insufficient_coins":
-
-        conversation_history[chat_id] = history
-
-        await update.message.reply_text(
-            t(
-                lang,
-                "insufficient_coins",
-                cost=result["cost"],
-                balance=get_balance(chat_id),
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "text":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": result["text"],
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_text(
-            result["text"],
-            reply_markup=main_menu_keyboard(
-                get_lang(chat_id)
-            ),
-        )
-
-        return
-
-    if result["type"] == "image":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated an image: {result['prompt']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_photo(
-            photo=result["url"],
-            caption=(
-                f"🖼 {result['prompt']}\n\n"
-                f"🪙 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "music":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated music: {result['prompt']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_audio(
-            audio=result["url"],
-            caption=(
-                f"🎵 {result['prompt']}\n\n"
-                f"🪙 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-    if result["type"] == "voice":
-
-        history.append(
-            {
-                "role": "assistant",
-                "content": (
-                    f"[Generated voice for: {result['text']}]"
-                ),
-            }
-        )
-
-        conversation_history[chat_id] = history
-
-        new_balance = change_balance(
-            chat_id,
-            -result["cost"],
-        )
-
-        await update.message.reply_voice(
-            voice=io.BytesIO(result["audio_bytes"]),
-            caption=(
-                f"🔊 -{result['cost']} coin "
-                f"({new_balance})"
-            ),
-            reply_markup=main_menu_keyboard(lang),
-        )
-
-        return
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-def build_application():
-
-    missing = []
-
-    if "BU_YERGA" in TELEGRAM_BOT_TOKEN:
-        missing.append(
-            "TELEGRAM_BOT_TOKEN"
-        )
-
-    if "BU_YERGA" in ANTHROPIC_API_KEY:
-        missing.append(
-            "ANTHROPIC_API_KEY"
-        )
-
-    if "BU_YERGA" in FAL_KEY:
-        missing.append(
-            "FAL_KEY"
-        )
-
-    if (
-        not HF_API_KEY_ID
-        or not HF_API_KEY_SECRET
-    ):
-        missing.append(
-            "HF_API_KEY_ID / "
-            "HF_API_KEY_SECRET"
-        )
-
-    if "BU_YERGA" in ADMIN_ID:
-        missing.append(
-            "ADMIN_ID"
-        )
-
-    if missing:
-
-        print(
-            "\n⚠️ DIQQAT: "
-            "Quyidagi kalitlar "
-            "sozlanmagan: "
-            f"{', '.join(missing)}\n"
-        )
-
-        print(
-            "Bot baribir ishga tushadi, "
-            "lekin sozlanmagan "
-            "funksiyalar ishlamaydi.\n"
-        )
-
-    app = (
-        ApplicationBuilder()
-        .token(TELEGRAM_BOT_TOKEN)
-        .build()
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "help",
-            help_command,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "clear",
-            new_chat,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "id",
-            show_id,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "balance",
-            show_balance,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "coin_qoshish",
-            add_coins_admin,
-        )
-    )
-
-    app.add_handler(
-        CommandHandler(
-            "statistika",
-            show_stats_admin,
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            style_selected_callback,
-            pattern=r"^style:",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            language_selected_callback,
-            pattern=r"^lang:",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            voice_gender_selected_callback,
-            pattern=r"^voice_gender:",
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.PHOTO,
-            process_style_photo,
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT
-            & ~filters.COMMAND,
-            handle_message,
-        )
-    )
-
-    return app
-
-
-def main():
-
-    app = build_application()
-
-    print(
-        f"🤖 {BOT_NAME} ishga tushdi "
-        "(faqat bot, Mini App "
-        "serversiz)..."
-    )
-
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
+            "video_
