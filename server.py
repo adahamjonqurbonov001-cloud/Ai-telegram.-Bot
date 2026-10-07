@@ -68,6 +68,8 @@ from bot import (
     claude_client,
     classify_and_maybe_generate,
     conversation_history,
+    add_gallery_entry,
+    get_gallery_entries,
     analyze_video_with_claude,
     edit_image_with_instruction,
     analyze_or_edit_photo,
@@ -340,6 +342,61 @@ async def api_list_video_models(
     ]
 
 
+@api.get("/api/gallery")
+async def api_get_gallery(
+    init_data: str,
+    type: str = "all",
+    lang: str = DEFAULT_LANGUAGE,
+):
+    """
+    MUHIM (YANGI): foydalanuvchining FAQAT O'Z natijalarini
+    (rasm/video/musiqa/ovoz) qaytaradi — foydalanuvchi ID'si
+    init_data'dan (Telegram imzosi tekshirilgan holda) aniqlanadi,
+    so'rovdan emas, shuning uchun boshqa birovning galereyasini
+    ko'rish mumkin emas.
+
+    Query parametrlari:
+        init_data — Telegram WebApp initData (majburiy)
+        type      — "all" (standart) / "image" / "video" /
+                    "music" / "voice"
+        lang      — hozircha ishlatilmaydi (tarjima frontendda
+                    amalga oshiriladi), lekin kelajakdagi
+                    moslik uchun qabul qilinadi
+
+    Javob: {"items": [{"type", "url", "created_at", "prompt",
+    "model"}, ...]} — ENG YANGISI birinchi.
+    """
+
+    user = verify_telegram_init_data(
+        init_data
+    )
+
+    chat_id = user["id"]
+
+    allowed_types = {"all", "image", "video", "music", "voice"}
+
+    if type not in allowed_types:
+        type = "all"
+
+    entries = get_gallery_entries(
+        chat_id,
+        entry_type=type,
+    )
+
+    return {
+        "items": [
+            {
+                "type": e.get("type"),
+                "url": e.get("url"),
+                "created_at": e.get("created_at"),
+                "prompt": e.get("prompt", ""),
+                "model": e.get("model", ""),
+            }
+            for e in entries
+        ]
+    }
+
+
 @api.get("/api/balance")
 async def api_get_balance(init_data: str):
 
@@ -443,6 +500,14 @@ async def api_apply_style(
     new_balance = change_balance(
         chat_id,
         -COIN_COST_STYLE,
+    )
+
+    await add_gallery_entry(
+        chat_id,
+        "image",
+        result_url,
+        prompt=style_label(style_id, lang),
+        model=f"style:{style_id}",
     )
 
     if telegram_application is not None:
@@ -621,6 +686,14 @@ async def api_chat(
             -result["cost"],
         )
 
+        await add_gallery_entry(
+            chat_id,
+            "image",
+            result["url"],
+            prompt=result["prompt"],
+            model="photo_edit",
+        )
+
         return {
             "kind": "image",
             "image_url": result["url"],
@@ -737,6 +810,14 @@ async def api_chat(
             -result["cost"],
         )
 
+        await add_gallery_entry(
+            chat_id,
+            "image",
+            result["url"],
+            prompt=result["prompt"],
+            model="agent",
+        )
+
         return {
             "kind": "image",
             "image_url": result["url"],
@@ -759,6 +840,14 @@ async def api_chat(
         new_balance = change_balance(
             chat_id,
             -result["cost"],
+        )
+
+        await add_gallery_entry(
+            chat_id,
+            "music",
+            result["url"],
+            prompt=result["prompt"],
+            model="agent",
         )
 
         return {
@@ -788,6 +877,44 @@ async def api_chat(
         audio_b64 = base64.b64encode(
             result["audio_bytes"]
         ).decode("ascii")
+
+        try:
+
+            os.makedirs(MEDIA_TMP_DIR, exist_ok=True)
+
+            gallery_voice_filename = (
+                f"voice_{chat_id}_{uuid.uuid4().hex}.mp3"
+            )
+
+            gallery_voice_path = os.path.join(
+                MEDIA_TMP_DIR, gallery_voice_filename
+            )
+
+            with open(gallery_voice_path, "wb") as f:
+                f.write(result["audio_bytes"])
+
+            asyncio.create_task(
+                _delete_media_file_later(
+                    gallery_voice_path,
+                    GALLERY_MEDIA_RETENTION_SECONDS,
+                )
+            )
+
+            await add_gallery_entry(
+                chat_id,
+                "voice",
+                f"/api/media/{gallery_voice_filename}",
+                prompt=result["text"][:200],
+                model="agent",
+            )
+
+        except Exception:
+
+            logger.warning(
+                "Agent ovozini galereyaga saqlab "
+                "bo'lmadi:",
+                exc_info=True,
+            )
 
         return {
             "kind": "voice",
@@ -863,6 +990,14 @@ async def api_generate_image(
         -COIN_COST_IMAGE,
     )
 
+    await add_gallery_entry(
+        chat_id,
+        "image",
+        image_url,
+        prompt=prompt,
+        model="flux",
+    )
+
     return {
         "image_url": image_url,
         "balance": new_balance,
@@ -879,6 +1014,14 @@ VOICEOVER_ALLOWED_MODELS = {"kling", "kling_pro"}
 # Railway diski cheksiz to'lib ketmasligi uchun (foydalanuvchi
 # odatda natijani darhol ko'radi/yuklab oladi).
 MEDIA_CLEANUP_DELAY_SECONDS = 900  # 15 daqiqa
+
+# MUHIM (YANGI, Galereya uchun): ovoz (voice) fayllari galereyada
+# uzoqroq saqlanishi kerak — 15 daqiqa yetarli emas, chunki
+# foydalanuvchi galereyaga ertaga ham qaytishi mumkin. Railway
+# diski baribir vaqtinchalik (har deployda tozalanadi), shuning
+# uchun "abadiy" saqlash mumkin emas — lekin 7 kun oddiy
+# foydalanish uchun yetarli murosa.
+GALLERY_MEDIA_RETENTION_SECONDS = 7 * 24 * 60 * 60  # 7 kun
 
 
 async def _delete_media_file_later(path: str, delay_seconds: int):
@@ -1355,9 +1498,19 @@ async def run_ai_studio_job(
         -COIN_COST_AI_STUDIO,
     )
 
+    ai_studio_video_url = f"/api/media/{os.path.basename(final_path)}"
+
+    await add_gallery_entry(
+        chat_id,
+        "video",
+        ai_studio_video_url,
+        prompt=brief,
+        model="ai_studio",
+    )
+
     video_jobs[job_id] = {
         "status": "done",
-        "video_url": f"/api/media/{os.path.basename(final_path)}",
+        "video_url": ai_studio_video_url,
         "balance": new_balance,
         "cost": COIN_COST_AI_STUDIO,
     }
@@ -1546,6 +1699,14 @@ async def run_video_generation_job(
     new_balance = change_balance(
         chat_id,
         -total_cost,
+    )
+
+    await add_gallery_entry(
+        chat_id,
+        "video",
+        final_video_url,
+        prompt=prompt,
+        model=model_key,
     )
 
     video_jobs[job_id] = {
@@ -1858,6 +2019,13 @@ async def api_generate_music(
         -COIN_COST_MUSIC,
     )
 
+    await add_gallery_entry(
+        chat_id,
+        "music",
+        audio_url,
+        prompt=prompt,
+    )
+
     return {
         "audio_url": audio_url,
         "balance": new_balance,
@@ -1955,6 +2123,47 @@ async def api_generate_voice(
         chat_id,
         -COIN_COST_VOICE,
     )
+
+    # MUHIM (YANGI): galereya uchun ovozning nusxasini
+    # MEDIA_TMP_DIR'ga saqlaymiz va /api/media orqali xizmat
+    # qilamiz — asosiy javob (audio_base64) o'zgarmaydi, frontend
+    # hech narsani o'zgartirmasdan avvalgidek ishlayveradi.
+    try:
+
+        os.makedirs(MEDIA_TMP_DIR, exist_ok=True)
+
+        gallery_voice_filename = (
+            f"voice_{chat_id}_{uuid.uuid4().hex}.mp3"
+        )
+
+        gallery_voice_path = os.path.join(
+            MEDIA_TMP_DIR, gallery_voice_filename
+        )
+
+        with open(gallery_voice_path, "wb") as f:
+            f.write(audio_bytes)
+
+        asyncio.create_task(
+            _delete_media_file_later(
+                gallery_voice_path,
+                GALLERY_MEDIA_RETENTION_SECONDS,
+            )
+        )
+
+        await add_gallery_entry(
+            chat_id,
+            "voice",
+            f"/api/media/{gallery_voice_filename}",
+            prompt=text[:200],
+            model=voice_gender,
+        )
+
+    except Exception:
+
+        logger.warning(
+            "Ovozni galereyaga saqlab bo'lmadi:",
+            exc_info=True,
+        )
 
     return {
         "audio_base64": base64.b64encode(
@@ -2088,4 +2297,4 @@ if __name__ == "__main__":
         api,
         host="0.0.0.0",
         port=port,
-        )
+    )
